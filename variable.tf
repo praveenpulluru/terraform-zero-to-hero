@@ -1,50 +1,35 @@
-import org.springframework.cloud.gateway.filter.GatewayFilter;
-import org.springframework.cloud.gateway.filter.GatewayFilterChain;
-import org.springframework.http.HttpMethod;
-import org.springframework.web.server.ServerWebExchange;
-import reactor.core.publisher.Mono;
+public class MetadataMatcher {
 
-public class MetadataRoutingFilter implements GatewayFilter {
-
-    private final String onPremUrl;
-    private final String cloudUrl;
-    private final String metadataPropertyToMatch;
-
-    public MetadataRoutingFilter(String onPremUrl, String cloudUrl, String metadataPropertyToMatch) {
-        this.onPremUrl = onPremUrl;
-        this.cloudUrl = cloudUrl;
-        this.metadataPropertyToMatch = metadataPropertyToMatch;
+    // Method to match metadata property (this can be modified to match based on any property dynamically)
+    public static boolean matchMetadata(Map<String, Object> metadata, String matchProperty) {
+        return metadata.containsKey(matchProperty) && metadata.get(matchProperty) != null;
     }
+}
+@Configuration
+public class GatewayRoutesConfig {
 
-    @Override
-    public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
-        // Extract the payload from the request (assuming it's JSON and we can extract metadata)
-        return exchange.getRequest().getBody()
-                .reduce((acc, item) -> acc) // Combine chunks into a single buffer
-                .flatMap(buffer -> {
-                    String payload = buffer.toString(StandardCharsets.UTF_8);
-                    // Assuming you are using Jackson or another library to parse the JSON payload
-                    try {
-                        Map<String, Object> metadata = parseMetadata(payload);
-                        if (MetadataMatcher.matchMetadata(metadata, metadataPropertyToMatch)) {
-                            // Route to cloud if matched
-                            exchange.getRequest().mutate().uri(URI.create(cloudUrl)).build();
-                        } else {
-                            // Route to on-prem if not matched
-                            exchange.getRequest().mutate().uri(URI.create(onPremUrl)).build();
-                        }
-                    } catch (Exception e) {
-                        // Handle any parsing errors
-                        e.printStackTrace();
-                    }
-                    return chain.filter(exchange);
-                });
-    }
+    @Value("${services.on-prem-url}")
+    private String onPremUrl;
 
-    // Helper method to parse the metadata from the payload (simplified here)
-    private Map<String, Object> parseMetadata(String payload) throws JsonProcessingException {
-        ObjectMapper objectMapper = new ObjectMapper();
-        JsonNode rootNode = objectMapper.readTree(payload);
-        return objectMapper.convertValue(rootNode.get("metadata"), Map.class);
+    @Value("${services.cloud-url}")
+    private String cloudUrl;
+
+    private static final String on_prem = "on-prem";
+    private static final String cloud = "cloud";
+
+    @Value("${metadata.property.match}")
+    private String metadataPropertyToMatch; // Property to match in metadata
+
+    @Bean
+    public RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
+        return builder.routes()
+                // Route POST, PUT, DELETE to Cloud or On-Prem based on Metadata
+                .route("route-post-put-delete-dynamic",
+                        r -> r.path("/tdk/cms/rest/**")
+                                .and()
+                                .method(HttpMethod.POST, HttpMethod.PUT, HttpMethod.DELETE)
+                                .filters(f -> f.filter(new MetadataRoutingFilter(onPremUrl, cloudUrl, metadataPropertyToMatch)))
+                                .uri("http://dummy")) // dummy uri just to match the route
+                .build();
     }
 }
