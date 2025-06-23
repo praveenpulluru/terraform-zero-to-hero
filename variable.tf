@@ -1,3 +1,5 @@
+org.springframework.http.server.reactive.ServerHttpRequest
+The method getMultipartData() is undefined for the type ServerHttpRequest
 import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.http.HttpMethod;
