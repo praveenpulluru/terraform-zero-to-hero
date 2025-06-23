@@ -1,3 +1,5 @@
+org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'org.springframework.cloud.gateway.config.GatewayClassPathWarningAutoConfiguration$SpringMvcFoundOnClasspathConfiguration': Failed to instantiate [org.springframework.cloud.gateway.config.GatewayClassPathWarningAutoConfiguration$SpringMvcFoundOnClasspathConfiguration]: Constructor threw exception
+
 import org.springframework.stereotype.Component;
 import org.springframework.http.HttpMethod;
 import org.springframework.util.MultiValueMap;
