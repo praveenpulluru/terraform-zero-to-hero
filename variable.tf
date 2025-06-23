@@ -1,97 +1,163 @@
-{org.springframework.cloud.gateway.support.ServerWebExchangeUtils.gatewayPredicateRouteAttr=route-put-post-delete-to-cloud, org.springframework.cloud.gateway.support.ServerWebExchangeUtils.gatewayPredicateMatchedPathAttr=/trademark/cms/rest/case/*/mark/**, org.springframework.cloud.gateway.support.ServerWebExchangeUtils.uriTemplateVariables={}, org.springframework.cloud.gateway.support.ServerWebExchangeUtils.gatewayPredicatePathContainer=/trademark/cms/rest/case/76900900/mark/MRK_00.jpg%20%22documentName%22:%20%22MRK_00.jpg%22,%22documentAlias%22:%20%22mark%22,%22createdByUserId%22:%20%22eFile%22,%22accessLevel%22:%20%22public%22,%22documentType%22:%20%22mark%22,%22docCode%22:%20%22MRK%22,%22mailDate%22:%20%222025-06-10T14:45:18.426-0400%22,%20%22loadDate%22:%20%222025-06-10T14:45:18.426-0400%22,%20%22scanDate%22:%20%222025-06-10T14:45:18.426-0400%22,%20%22effectiveStartDate%22:%20%222025-06-10T14:45:18.426-0400%22,%20%22modifiedByUserId%22:%20%22Teas%22,%20%22migrationSource%22:%20%22TCIM%22,%20%22migrationMethod%22:%20%22upload%22,%22sourceMedium%22:%20%22EMAIL%22,%22sourceMedia%22:%20%22ELECTRONIC%22%7Dhttp://localhost:8081/trademark/cms/rest/case/76900900/mark/MRK_00.jpg, org.springframework.cloud.gateway.support.ServerWebExchangeUtils.routeWeight={}, org.springframework.cloud.gateway.support.ServerWebExchangeUtils.gatewayReactorContext=Context1{micrometer.observation={name=http.server.requests(null), error=null, context=name='http.server.requests', contextualName='null', error='null', lowCardinalityKeyValues=[exception='none', method='PUT', outcome='SUCCESS', status='200', uri='UNKNOWN'], highCardinalityKeyValues=[http.url='/trademark/cms/rest/case/76900900/mark/MRK_00.jpg%20%22documentName%22:%20%22MRK_00.jpg%22,%22documentAlias%22:%20%22mark%22,%22createdByUserId%22:%20%22eFile%22,%22accessLevel%22:%20%22public%22,%22documentType%22:%20%22mark%22,%22docCode%22:%20%22MRK%22,%22mailDate%22:%20%222025-06-10T14:45:18.426-0400%22,%20%22loadDate%22:%20%222025-06-10T14:45:18.426-0400%22,%20%22scanDate%22:%20%222025-06-10T14:45:18.426-0400%22,%20%22effectiveStartDate%22:%20%222025-06-10T14:45:18.426-0400%22,%20%22modifiedByUserId%22:%20%22Teas%22,%20%22migrationSource%22:%20%22TCIM%22,%20%22migrationMethod%22:%20%22upload%22,%22sourceMedium%22:%20%22EMAIL%22,%22sourceMedia%22:%20%22ELECTRONIC%22%7Dhttp://localhost:8081/trademark/cms/rest/case/76900900/mark/MRK_00.jpg'], map=[class io.micrometer.core.instrument.Timer$Sample='io.micrometer.core.instrument.Timer$Sample@5165a482', class io.micrometer.core.instrument.LongTaskTimer$Sample='SampleImpl{duration(seconds)=164.5064247, duration(nanos)=1.645064247E11, startTimeNanos=20218308377600}'], parentObservation=null}}, org.springframework.cloud.gateway.support.ServerWebExchangeUtils.gatewayHandlerMapper=RoutePredicateHandlerMapping, org.springframework.web.server.ServerWebExchange.LOG_ID=7156a696-2, org.springframework.http.server.reactive.observation.ServerRequestObservationContext=name='http.server.requests', contextualName='null', error='null', lowCardinalityKeyValues=[exception='none', method='PUT', outcome='SUCCESS', status='200', uri='UNKNOWN'], highCardinalityKeyValues=[http.url='/trademark/cms/rest/case/76900900/mark/MRK_00.jpg%20%22documentName%22:%20%22MRK_00.jpg%22,%22documentAlias%22:%20%22mark%22,%22createdByUserId%22:%20%22eFile%22,%22accessLevel%22:%20%22public%22,%22documentType%22:%20%22mark%22,%22docCode%22:%20%22MRK%22,%22mailDate%22:%20%222025-06-10T14:45:18.426-0400%22,%20%22loadDate%22:%20%222025-06-10T14:45:18.426-0400%22,%20%22scanDate%22:%20%222025-06-10T14:45:18.426-0400%22,%20%22effectiveStartDate%22:%20%222025-06-10T14:45:18.426-0400%22,%20%22modifiedByUserId%22:%20%22Teas%22,%20%22migrationSource%22:%20%22TCIM%22,%20%22migrationMethod%22:%20%22upload%22,%22sourceMedium%22:%20%22EMAIL%22,%22sourceMedia%22:%20%22ELECTRONIC%22%7Dhttp://localhost:8081/trademark/cms/rest/case/76900900/mark/MRK_00.jpg'], map=[class io.micrometer.core.instrument.Timer$Sample='io.micrometer.core.instrument.Timer$Sample@5165a482', class io.micrometer.core.instrument.LongTaskTimer$Sample='SampleImpl{duration(seconds)=164.5065186, duration(nanos)=1.645065186E11, startTimeNanos=20218308377600}'], parentObservation=null, org.springframework.cloud.gateway.support.ServerWebExchangeUtils.gatewayPredicateMatchedPathRouteIdAttr=route-put-post-delete-to-cloud}
+Ah, I see! If your request is a **multipart form** with the content being a file and the metadata as a separate part, the approach changes slightly. In this case, you'll need to handle **multipart form data**.
 
-The error you’re seeing is due to a type mismatch in how the `and()` method is being used in your route configuration.
+Here’s how we can approach it:
 
-In Spring Cloud Gateway, the `and()` method in the context of route configuration (like `RouteLocatorBuilder`) is part of the `PredicateSpec` chain and expects a `Predicate<ServerWebExchange>` as the argument. However, you're passing a `MetadataMatcher`, which does not match the expected type.
+1. **Extract the Metadata**: You'll want to parse the **metadata** object from the multipart form. This metadata is typically sent as a JSON or form data object.
+2. **Extract the File**: You'll need to handle the file part as well, since the content is a file (image, PDF, etc.).
+3. **Route Based on Metadata**: Once the metadata is extracted, you can use it to decide how to route the request.
 
-### Problem
+### Steps to Handle Multipart Form Data in Spring Cloud Gateway
 
-The method `and()` expects a **predicate** to be passed, but you're trying to pass a `MetadataMatcher`, which is a custom class and doesn't directly implement `Predicate<ServerWebExchange>`. The `MetadataMatcher` is likely a utility you created for matching metadata inside the request body, but it isn't directly usable in `and()` without adapting it to fit the required interface.
+Spring Cloud Gateway itself doesn’t provide out-of-the-box support for handling multipart form data, so you'll need to write a custom filter to process the multipart body, extract both the file and the metadata, and then route based on the metadata.
 
-### Solution
+### 1. **Create the Metadata Routing Filter for Multipart Form Data**
 
-To resolve this, you need to adapt the `MetadataMatcher` to fit into the `PredicateSpec` chain by wrapping it in a **`Predicate<ServerWebExchange>`**.
-
-### Step 1: Modify the `MetadataMatcher`
-
-You can modify the `MetadataMatcher` to make it return a `Predicate<ServerWebExchange>`. Here’s how:
+Here's how you can implement a custom `GatewayFilter` that processes the multipart form and extracts both the **metadata** (as a JSON object) and the **file** (as a part).
 
 ```java
-public class MetadataMatcher {
+import org.springframework.cloud.gateway.filter.GatewayFilter;
+import org.springframework.cloud.gateway.filter.GatewayFilterChain;
+import org.springframework.http.HttpMethod;
+import org.springframework.web.reactive.function.BodyExtractors;
+import org.springframework.web.server.ServerWebExchange;
+import org.springframework.core.io.buffer.DataBufferUtils;
+import reactor.core.publisher.Mono;
+import org.springframework.http.codec.multipart.FilePart;
+import org.springframework.http.codec.multipart.FormFieldPart;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
-    private String key;
-    private String value;
+import java.util.Map;
+import java.util.List;
 
-    public MetadataMatcher(String key, String value) {
-        this.key = key;
-        this.value = value;
+public class MetadataRoutingFilter implements GatewayFilter {
+
+    private final ObjectMapper objectMapper;
+
+    public MetadataRoutingFilter(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
     }
 
-    // This method returns a Predicate<ServerWebExchange> so it can be used in the and() method
-    public Predicate<ServerWebExchange> toPredicate(Map<String, String> metadata) {
-        return exchange -> {
-            // Match logic goes here
-            // For example, you can access metadata from exchange attributes
-            Map<String, Object> metadataFromExchange = exchange.getAttribute("metadata");
-            if (metadataFromExchange != null) {
-                Object metaValue = metadataFromExchange.get(key);
-                return metaValue != null && metaValue.equals(value);
-            }
-            return false;
-        };
+    @Override
+    public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+        return exchange.getRequest()
+                .getBody()
+                .flatMap(buffer -> DataBufferUtils.join(buffer)) // Join the body (multipart data)
+                .flatMap(dataBuffer -> {
+                    // Convert the DataBuffer to a byte array to extract multipart form data
+                    byte[] body = new byte[dataBuffer.readableByteCount()];
+                    dataBuffer.read(body);
+                    DataBufferUtils.release(dataBuffer); // Don't forget to release buffer
+
+                    // Handle the multipart form and extract metadata and file parts
+                    return exchange.getRequest()
+                            .getMultipartData()
+                            .flatMap(parts -> {
+                                FormFieldPart metadataPart = (FormFieldPart) parts.get("metadata");
+                                if (metadataPart != null) {
+                                    String metadataJson = metadataPart.value();
+                                    try {
+                                        Map<String, Object> metadata = objectMapper.readValue(metadataJson, Map.class);
+
+                                        // Save metadata in the exchange attributes for further routing
+                                        exchange.getAttributes().put("metadata", metadata);
+
+                                    } catch (Exception e) {
+                                        return Mono.error(new RuntimeException("Failed to parse metadata JSON", e));
+                                    }
+                                }
+
+                                // Optionally handle the file part if needed
+                                List<FilePart> fileParts = (List<FilePart>) parts.get("file");
+                                if (fileParts != null && !fileParts.isEmpty()) {
+                                    // Process the file part (you can store the file or process it here)
+                                    FilePart filePart = fileParts.get(0);
+                                    // Do something with the file if necessary
+                                }
+
+                                return chain.filter(exchange);
+                            });
+                });
     }
 }
 ```
 
-### Step 2: Use the `MetadataMatcher` in the Route Configuration
+### 2. **Modify `RouteLocator` to Handle Multipart Form Data**
 
-Now, when you are setting up your routes, you can call `toPredicate()` on your `MetadataMatcher` to convert it into a `Predicate<ServerWebExchange>`:
+Now that your filter processes the metadata and file, you can modify the route configuration to use this filter. The filter will extract the metadata and make it available in the exchange, which you can use for routing.
 
 ```java
 @Configuration
 public class GatewayRoutesConfig {
 
-    @Value("${services.on-prem-url}")
-    private String onPremUrl;
-
     @Value("${services.cloud-url}")
     private String cloudUrl;
 
     @Bean
-    RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
+    public RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
         return builder.routes()
-                // Example of using MetadataMatcher in a route configuration
-                .route("route-all-GET-to-agg-service", r -> r
-                        .path("/tdk/cms/rest/**")
+                .route("route-put-post-delete-to-cloud", r -> r
+                        .path("/trademark/cms/rest/case/**/mark/**")  // Match the dynamic URL path
                         .and()
-                        .method(HttpMethod.GET)
-                        .and()
-                        // Use MetadataMatcher as a Predicate for routing
-                        .predicate(new MetadataMatcher("source", "tm-ns").toPredicate(Map.of("source", "tm-ns")))
-                        .uri("http://dummy"))
-                .route("route-save-as-mark-to-cloud", r -> r
-                        .path("/tdk/cms/rest/case/*/*/*/set-as-mark")
-                        .and()
-                        .method(HttpMethod.POST)
-                        .and()
-                        .predicate(new MetadataMatcher("documentType", "officeaction").toPredicate(Map.of("documentType", "officeaction")))
-                        .uri(cloudUrl))
+                        .method(HttpMethod.PUT)
+                        .filters(f -> f.filter(new MetadataRoutingFilter(objectMapper)))  // Custom filter to extract metadata
+                        .predicate(exchange -> {
+                            // Access metadata from the exchange attributes
+                            Map<String, Object> metadata = exchange.getAttribute("metadata");
+
+                            // Perform any matching logic based on metadata
+                            if (metadata != null && metadata.containsKey("documentType")) {
+                                String documentType = (String) metadata.get("documentType");
+                                return "mark".equals(documentType);  // Example: match documentType "mark"
+                            }
+
+                            return false;
+                        })
+                        .uri(cloudUrl))  // Route to the cloud URL
                 .build();
     }
 }
 ```
 
-### Explanation:
+### 3. **Multipart Request Example**
 
-1. **`MetadataMatcher` to Predicate**: I added a `toPredicate()` method inside `MetadataMatcher` that converts it into a `Predicate<ServerWebExchange>`. This allows the matcher to be used directly in the `and()` method.
+Your request should now look something like this:
 
-2. **Using MetadataMatcher in Routing**: Now you can use `new MetadataMatcher("source", "tm-ns").toPredicate(metadata)` in the `and()` method. The `metadata` can be passed as part of the route setup. If needed, you can also retrieve it from the `ServerWebExchange` or any other context.
+```http
+POST http://localhost:8081/trademark/cms/rest/case/{caseid}/mark/{filename}.jpg
+Content-Type: multipart/form-data; boundary=---boundary
 
-### Additional Notes:
+---boundary
+Content-Disposition: form-data; name="metadata"
+Content-Type: application/json
 
-* **Predicate Logic**: The logic in `toPredicate()` can be modified based on how you want to match the metadata. For example, if the metadata is dynamically fetched from the request body, you'd need to adjust it accordingly.
-* **Performance Considerations**: If your metadata is large or complex, ensure that you only store and process what's necessary to avoid memory overhead.
+{
+    "documentType": "mark",
+    "createdBy": "user123",
+    "documentAlias": "MRK_001"
+}
 
-With this solution, you're adapting your custom `MetadataMatcher` into something that fits into Spring Cloud Gateway's reactive and functional routing model.
+---boundary
+Content-Disposition: form-data; name="file"; filename="MRK_001.jpg"
+Content-Type: image/jpeg
 
-Let me know if this resolves the issue or if you need any further assistance!
+... (binary content of the image) ...
+---boundary--
+```
+
+### Key Considerations:
+
+1. **File Handling**: The filter allows you to access the file part (e.g., `file`), but you may need to do further processing (store it, pass it on to another service, etc.) depending on your requirements.
+2. **Metadata Parsing**: The `metadata` part is assumed to be a JSON string. You can adjust this to handle other formats (like key-value pairs) if needed.
+3. **Routing Logic**: After parsing the metadata and extracting the file, you can match based on any metadata field. In the example, I used `documentType` to demonstrate routing.
+
+### 4. **Error Handling**:
+
+You might want to handle errors gracefully, such as invalid metadata format or missing parts in the multipart form. Use `Mono.error()` or return custom error responses depending on the issue.
+
+---
+
+### Conclusion
+
+This solution involves reading the multipart form data, extracting both the metadata (as JSON) and the file, and then performing routing decisions based on the extracted metadata.
+
+Let me know if you have any further questions or need more help with this implementation!
