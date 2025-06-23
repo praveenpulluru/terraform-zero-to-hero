@@ -1,26 +1,7 @@
-Ah, I see the issue! The error message you're encountering — *"the target type of this expression should be a functional interface"* — occurs because `PredicateSpec` is expecting a **functional interface**, but you're trying to return a lambda expression that is not directly compatible with it.
-
-In Spring Cloud Gateway, the `PredicateSpec` expects a **predicate** (a function that takes `ServerWebExchange` and returns a boolean). However, you're currently passing a lambda that attempts to match the metadata using `MetadataMatcher`. The issue arises because `MetadataMatcher.match(metadata)` expects a `Map<String, String>`, but you're not working with the `ServerWebExchange` object itself, which is what the `Predicate` interface expects.
-
-### Solution
-
-We need to adjust the logic so that the metadata extraction happens within the `ServerWebExchange` context (because that's what the route predicates operate on) and make sure the predicate matches the `ServerWebExchange` as required by the Spring Gateway framework.
-
-Here’s how we can fix it:
-
-1. **Extract the metadata from the `ServerWebExchange`.**
-2. **Create a predicate that checks if the metadata matches the condition you want.**
-
-### Updated Approach
-
-Instead of using `MetadataMatcher` directly in the lambda, we will create a predicate that accesses the `ServerWebExchange` and extracts the metadata to pass to the matcher.
-
-### Updated `createPredicate` Method
-
-```java
 import org.springframework.cloud.gateway.route.PredicateSpec;
 import org.springframework.web.server.ServerWebExchange;
 import java.util.Map;
+import java.util.function.Predicate;
 
 public class MetadataMatcher {
 
@@ -37,12 +18,12 @@ public class MetadataMatcher {
         return metadata.containsKey(key) && metadata.get(key).equals(value);
     }
 
-    // Static method that returns a PredicateSpec for use in route configuration
-    public static PredicateSpec createPredicate(String key, String value) {
-        return (exchange) -> {
+    // Static method that returns a Predicate<ServerWebExchange> for use in route configuration
+    public static Predicate<ServerWebExchange> createPredicate(String key, String value) {
+        return exchange -> {
             // Retrieve metadata from the exchange (e.g., headers or custom attributes)
             Map<String, String> metadata = getMetadataFromExchange(exchange);
-            
+
             // Create an instance of MetadataMatcher and check if it matches
             MetadataMatcher matcher = new MetadataMatcher(key, value);
             return matcher.match(metadata);  // Return the result of the match
@@ -55,7 +36,7 @@ public class MetadataMatcher {
         return exchange.getRequest().getHeaders().toSingleValueMap(); // Example (customize this)
     }
 }
-```
+
 
 ### Explanation
 
