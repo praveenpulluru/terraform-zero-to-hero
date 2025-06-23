@@ -1,35 +1,9 @@
-public class MetadataMatcher {
-
-    // Method to match metadata property (this can be modified to match based on any property dynamically)
-    public static boolean matchMetadata(Map<String, Object> metadata, String matchProperty) {
-        return metadata.containsKey(matchProperty) && metadata.get(matchProperty) != null;
-    }
+{
+  "timestamp": "2025-06-23T19:08:15.276+00:00",
+  "path": "/trademark/cms/rest/case/76900900/mark/MRK_00.jpg%20%22documentName%22:%20%22MRK_00.jpg%22,%22documentAlias%22:%20%22mark%22,%22createdByUserId%22:%20%22eFile%22,%22accessLevel%22:%20%22public%22,%22documentType%22:%20%22mark%22,%22docCode%22:%20%22MRK%22,%22mailDate%22:%20%222025-06-10T14:45:18.426-0400%22,%20%22loadDate%22:%20%222025-06-10T14:45:18.426-0400%22,%20%22scanDate%22:%20%222025-06-10T14:45:18.426-0400%22,%20%22effectiveStartDate%22:%20%222025-06-10T14:45:18.426-0400%22,%20%22modifiedByUserId%22:%20%22Teas%22,%20%22migrationSource%22:%20%22TCIM%22,%20%22migrationMethod%22:%20%22upload%22,%22sourceMedium%22:%20%22EMAIL%22,%22sourceMedia%22:%20%22ELECTRONIC%22%7Dhttp://localhost:8081/trademark/cms/rest/case/76900900/mark/MRK_00.jpg",
+  "status": 500,
+  "error": "Internal Server Error",
+  "requestId": "e2e328b2-1"
 }
-@Configuration
-public class GatewayRoutesConfig {
 
-    @Value("${services.on-prem-url}")
-    private String onPremUrl;
-
-    @Value("${services.cloud-url}")
-    private String cloudUrl;
-
-    private static final String on_prem = "on-prem";
-    private static final String cloud = "cloud";
-
-    @Value("${metadata.property.match}")
-    private String metadataPropertyToMatch; // Property to match in metadata
-
-    @Bean
-    public RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
-        return builder.routes()
-                // Route POST, PUT, DELETE to Cloud or On-Prem based on Metadata
-                .route("route-post-put-delete-dynamic",
-                        r -> r.path("/tdk/cms/rest/**")
-                                .and()
-                                .method(HttpMethod.POST, HttpMethod.PUT, HttpMethod.DELETE)
-                                .filters(f -> f.filter(new MetadataRoutingFilter(onPremUrl, cloudUrl, metadataPropertyToMatch)))
-                                .uri("http://dummy")) // dummy uri just to match the route
-                .build();
-    }
-}
+JsonNode rootNode = objectMapper.readTree(payload);
