@@ -41,3 +41,28 @@ public class RewritePathFilter implements GatewayFilter, Ordered {
         return -1; // Runs before most filters
     }
 }
+
+
+
+
+@Bean
+public RouteLocator customRouteLocator(RouteLocatorBuilder builder, RewritePathFilter rewritePathFilter) {
+    return builder.routes()
+            .route("route-put-post-delete-to-cloud",
+                    r -> r.path("/trademark/cms/rest/case/*/mark/**")
+                            .and()
+                            .method(HttpMethod.POST, HttpMethod.PUT)
+                            .filters(f -> f
+                                    .filter((exchange, chain) -> {
+                                        if (shouldRouteToCloud(exchange)) {
+                                            return chain.filter(exchange.mutate().request(createCloudRequest(exchange)).build());
+                                        }
+                                        return chain.filter(exchange);
+                                    })
+                                    .filter(rewritePathFilter)
+                            )
+                            .uri(cloudUrl)
+            )
+            .build();
+}
+
