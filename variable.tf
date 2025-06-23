@@ -1,62 +1,19 @@
-@Configuration
-public class GatewayRoutesConfig {
+2025-06-23T16:56:40.222-04:00[0;39m [32mDEBUG[0;39m [35m12780[0;39m [2m--- [hybrid-api] [ctor-http-nio-2] [0;39m[36mo.s.c.g.h.RoutePredicateHandlerMapping  [0;39m [2m:[0;39m Route matched: route-put-post-delete-to-cloud
+[2m2025-06-23T16:56:40.226-04:00[0;39m [32mDEBUG[0;39m [35m12780[0;39m [2m--- [hybrid-api] [ctor-http-nio-2] [0;39m[36mo.s.c.g.h.RoutePredicateHandlerMapping  [0;39m [2m:[0;39m Mapping [Exchange: PUT http://localhost:8081/trademark/cms/rest/case/76900900/mark/MRK_00.jpg] to Route{id='route-put-post-delete-to-cloud', uri=https://test.dev.tttt.tt:443, order=0, predicate=(Paths: [/trademark/cms/rest/case/*/mark/**], match trailing slash: true && Methods: [POST, PUT]), gatewayFilters=[[gov.uspto.tmcms.gateway.config.GatewayRoutesConfig$$Lambda/0x000001e84c48add0@7822fa85, order = 0], [[RewritePath /trademark/cms/rest/case/(?<sn>\d{8})\/(?<doctype>[^/]+)\/(?<filename>[^/]+)$ = '/cases/${sn}/MRK/${filename}'], order = 0]], metadata={}}
+[2m2025-06-23T16:56:40.226-04:00[0;39m [32mDEBUG[0;39m [35m12780[0;39m [2m--- [hybrid-api] [ctor-http-nio-2] [0;39m[36mo.s.c.g.h.RoutePredicateHandlerMapping  [0;39m [2m:[0;39m [ec6e5f49-1] Mapped to org.springframework.cloud.gateway.handler.FilteringWebHandler@6ba6557e
+[2m2025-06-23T16:56:40.256-04:00[0;39m [31mERROR[0;39m [35m12780[0;39m [2m--- [hybrid-api] [ctor-http-nio-2] [0;39m[36ma.w.r.e.AbstractErrorWebExceptionHandler[0;39m [2m:[0;39m [ec6e5f49-1]  500 Server Error for HTTP PUT "/trademark/cms/rest/case/76900900/mark/MRK_00.jpg"
 
-    @Value("${services.on-prem-url}")
-    private String onPremUrl;
-
-    @Value("${services.cloud-url}")
-    private String cloudUrl;
-
-    private static final String on_prem = "on-prem";
-    private static final String cloud = "cloud";
-    
-    private final MetadataMatcher metadataMatcher;
-
-    public GatewayRoutesConfig(MetadataMatcher metadataMatcher) {
-        this.metadataMatcher = metadataMatcher;
-    }
-
-    @Bean
-    public RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
-        return builder.routes()
-                .route("route-put-post-delete-to-cloud",
-                        r -> r.path("/trademark/cms/rest/case/*/mark/**").and()
-                        .method(HttpMethod.POST, HttpMethod.PUT)
-                        .filters(f -> f.filter((exchange, chain) -> {
-                            if (shouldRouteToCloud(exchange)) {
-                                return chain.filter(exchange.mutate().request(createCloudRequest(exchange)).build());
-                            }
-                            return chain.filter(exchange);
-                        }).rewritePath("/trademark/cms/rest/case/(?<sn>\\d{8})\\/(?<doctype>[^/]+)\\/(?<filename>[^/]+)$", "/cases/${sn}/MRK/${filename}")
-                        )
-                        .uri(cloudUrl))
-
-                .route("route-save-as-mark-to-cloud", r -> r.path("/trademark/cms/rest/case/*/mark")
-                        .and()
-                        .method(HttpMethod.POST)
-                        .filters(f -> f.filter((exchange, chain) -> {
-                            if (shouldRouteToCloud(exchange)) {
-                                return chain.filter(exchange.mutate().request(createCloudRequest(exchange)).build());
-                            }
-                            return chain.filter(exchange);
-                        }))
-                        .uri(cloudUrl))
-                .build();
-    }
-
-    private boolean shouldRouteToCloud(ServerWebExchange exchange) {
-        return metadataMatcher.match(exchange, "documentType", "mark");  // Example of matching based on documentType
-    }
-
-    private boolean shouldRouteToOnPrem(ServerWebExchange exchange) {
-        return metadataMatcher.match(exchange, "sourceMedium", "EMAIL");  // Example of matching based on sourceMedium
-    }
-
-    private ServerHttpRequest createCloudRequest(ServerWebExchange exchange) {
-        return exchange.getRequest().mutate().uri(URI.create(cloudUrl)).build();
-    }
-
-    private ServerHttpRequest createOnPremRequest(ServerWebExchange exchange) {
-        return exchange.getRequest().mutate().uri(URI.create(onPremUrl)).build();
-    }
-}
+java.lang.IllegalArgumentException: The path does not have a leading slash: 
+	at org.springframework.util.Assert.isTrue(Assert.java:135) ~[spring-core-6.2.5.jar:6.2.5]
+	Suppressed: reactor.core.publisher.FluxOnAssembly$OnAssemblyException: 
+Error has been observed at the following site(s):
+	*__checkpoint ⇢ org.springframework.cloud.gateway.filter.WeightCalculatorWebFilter [DefaultWebFilterChain]
+	*__checkpoint ⇢ HTTP PUT "/trademark/cms/rest/case/76900900/mark/MRK_00.jpg" [ExceptionHandlingWebHandler]
+Original Stack Trace:
+		at org.springframework.util.Assert.isTrue(Assert.java:135) ~[spring-core-6.2.5.jar:6.2.5]
+		at org.springframework.http.server.reactive.DefaultServerHttpRequestBuilder.path(DefaultServerHttpRequestBuilder.java:102) ~[spring-web-6.2.5.jar:6.2.5]
+		at org.springframework.cloud.gateway.filter.factory.RewritePathGatewayFilterFactory$1.filter(RewritePathGatewayFilterFactory.java:72) ~[spring-cloud-gateway-server-4.2.1.jar:4.2.1]
+		at org.springframework.cloud.gateway.filter.OrderedGatewayFilter.filter(OrderedGatewayFilter.java:44) ~[spring-cloud-gateway-server-4.2.1.jar:4.2.1]
+		at org.springframework.cloud.gateway.handler.FilteringWebHandler$DefaultGatewayFilterChain.lambda$filter$0(FilteringWebHandler.java:158) ~[spring-cloud-gateway-server-4.2.1.jar:4.2.1]
+		at reactor.core.publisher.MonoDefer.subscribe(MonoDefer.java:45) ~[reactor-core-3.7.4.jar:3.7.4]
+		at reactor.core.publisher.MonoDefer.subscribe(MonoDefer.java:53) ~[reactor-core-3.7.4.jar:3.7.4]
