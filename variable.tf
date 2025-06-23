@@ -1,9 +1,75 @@
-Multiple markers at this line
-	- Cannot infer type argument(s) for <R> flatMap(Function<? super T,? extends Publisher<? extends R>>)
-	- Line breakpoint:MetadataRoutingFilter [line: 44] - filter(ServerWebExchange, GatewayFilterChain)
-The method join(Publisher<? extends DataBuffer>) in the type DataBufferUtils is not applicable for the arguments (DataBuffer)
+import org.springframework.cloud.gateway.filter.GatewayFilter;
+import org.springframework.cloud.gateway.filter.GatewayFilterChain;
+import org.springframework.http.HttpMethod;
+import org.springframework.web.reactive.function.BodyExtractors;
+import org.springframework.web.server.ServerWebExchange;
+import org.springframework.core.io.buffer.DataBufferUtils;
+import org.springframework.http.codec.multipart.FilePart;
+import org.springframework.http.codec.multipart.FormFieldPart;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import reactor.core.publisher.Mono;
+import org.springframework.http.codec.multipart.Part;
 
-Ah, I see! If your request is a **multipart form** with the content being a file and the metadata as a separate part, the approach changes slightly. In this case, you'll need to handle **multipart form data**.
+import java.util.List;
+import java.util.Map;
+
+public class MetadataRoutingFilter implements GatewayFilter {
+
+    private final ObjectMapper objectMapper;
+
+    public MetadataRoutingFilter(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
+    }
+
+    @Override
+    public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+        return exchange.getRequest()
+                .getBody() // This is the reactive stream of the request body
+                .collectList() // Collect the body into a list of DataBuffer
+                .flatMap(dataBuffers -> {
+                    // Now we have a list of data buffers. We need to join them into a single byte array
+                    byte[] body = dataBuffers.stream()
+                            .reduce(new byte[0], (a, b) -> {
+                                byte[] combined = new byte[a.length + b.readableByteCount()];
+                                System.arraycopy(a, 0, combined, 0, a.length);
+                                b.read(combined, a.length, b.readableByteCount());
+                                return combined;
+                            });
+
+                    // Process the body as a string (assuming it's JSON)
+                    String jsonBody = new String(body);
+                    return exchange.getRequest()
+                            .getMultipartData()
+                            .flatMap(parts -> {
+                                FormFieldPart metadataPart = (FormFieldPart) parts.get("metadata");
+                                if (metadataPart != null) {
+                                    String metadataJson = metadataPart.value();
+                                    try {
+                                        Map<String, Object> metadata = objectMapper.readValue(metadataJson, Map.class);
+
+                                        // Save metadata in the exchange attributes for later use
+                                        exchange.getAttributes().put("metadata", metadata);
+
+                                    } catch (Exception e) {
+                                        return Mono.error(new RuntimeException("Failed to parse metadata JSON", e));
+                                    }
+                                }
+
+                                // Optionally handle the file part if needed
+                                List<FilePart> fileParts = (List<FilePart>) parts.get("file");
+                                if (fileParts != null && !fileParts.isEmpty()) {
+                                    // Process the file part (you can store the file or process it here)
+                                    FilePart filePart = fileParts.get(0);
+                                    // Do something with the file if necessary
+                                }
+
+                                // Continue with the filter chain
+                                return chain.filter(exchange);
+                            });
+                });
+    }
+}
+
 
 Here’s how we can approach it:
 
