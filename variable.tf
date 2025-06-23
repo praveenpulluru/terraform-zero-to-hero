@@ -1,100 +1,179 @@
-import org.springframework.cloud.gateway.filter.GatewayFilter;
-import org.springframework.cloud.gateway.filter.GatewayFilterChain;
+package org.springframework.http.server.reactive;
+
+import java.net.InetSocketAddress;
+import java.net.URI;
+import java.util.function.Consumer;
+
+import org.springframework.http.HttpCookie;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
-import org.springframework.web.server.ServerWebExchange;
-import org.springframework.web.multipart.MultipartFile;
+import org.springframework.http.HttpRequest;
+import org.springframework.http.ReactiveHttpInputMessage;
+import org.springframework.http.server.RequestPath;
+import org.springframework.lang.Nullable;
 import org.springframework.util.MultiValueMap;
-import org.springframework.web.multipart.Part;
-import org.springframework.web.reactive.function.BodyInserters;
-import reactor.core.publisher.Mono;
-import org.springframework.web.server.ServerWebExchange;
-import java.util.Map;
-import java.io.IOException;
 
-public class MetadataRoutingFilter implements GatewayFilter {
+/**
+ * Represents a reactive server-side HTTP request.
+ *
+ * @author Arjen Poutsma
+ * @author Rossen Stoyanchev
+ * @author Sam Brannen
+ * @since 5.0
+ */
+public interface ServerHttpRequest extends HttpRequest, ReactiveHttpInputMessage {
 
-    private final String onPremUrl;
-    private final String cloudUrl;
-    private final String metadataPropertyToMatch;
+	/**
+	 * Return an id that represents the underlying connection, if available,
+	 * or the request for the purpose of correlating log messages.
+	 * @since 5.1
+	 * @see org.springframework.web.server.ServerWebExchange#getLogPrefix()
+	 */
+	String getId();
 
-    public MetadataRoutingFilter(String onPremUrl, String cloudUrl, String metadataPropertyToMatch) {
-        this.onPremUrl = onPremUrl;
-        this.cloudUrl = cloudUrl;
-        this.metadataPropertyToMatch = metadataPropertyToMatch;
-    }
+	/**
+	 * Returns a structured representation of the full request path up to but
+	 * not including the {@link #getQueryParams() query}.
+	 * <p>The returned path is subdivided into a
+	 * {@link RequestPath#contextPath()} portion and the remaining
+	 * {@link RequestPath#pathWithinApplication() pathWithinApplication} portion.
+	 * The latter can be passed into methods of
+	 * {@link org.springframework.web.util.pattern.PathPattern} for path
+	 * matching purposes.
+	 */
+	RequestPath getPath();
 
-    @Override
-    public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
-        // Check if the request is multipart/form-data
-        if (exchange.getRequest().getHeaders().getContentType().equals(MediaType.MULTIPART_FORM_DATA)) {
-            // Access the multipart data
-            return exchange.getRequest().getMultipartData()
-                    .flatMap(multipartData -> {
-                        // Retrieve metadata from multipart data
-                        Part metadataPart = multipartData.getFirst("metadata");
+	/**
+	 * Return a read-only map with parsed and decoded query parameter values.
+	 */
+	MultiValueMap<String, String> getQueryParams();
 
-                        if (metadataPart != null) {
-                            // Process metadata (e.g., parse JSON)
-                            return metadataPart.getContent().map(buffer -> {
-                                try {
-                                    String metadataJson = new String(buffer.array(), StandardCharsets.UTF_8);
-                                    Map<String, Object> metadata = parseMetadata(metadataJson);
+	/**
+	 * Return a read-only map of cookies sent by the client.
+	 */
+	MultiValueMap<String, HttpCookie> getCookies();
 
-                                    // Perform matching based on metadata
-                                    if (MetadataMatcher.matchMetadata(metadata, metadataPropertyToMatch)) {
-                                        // If matched, route to cloud
-                                        exchange.getRequest().mutate().uri(URI.create(cloudUrl)).build();
-                                    } else {
-                                        // If not matched, route to on-prem
-                                        exchange.getRequest().mutate().uri(URI.create(onPremUrl)).build();
-                                    }
+	/**
+	 * Return the local address the request was accepted on, if available.
+	 * @since 5.2.3
+	 */
+	@Nullable
+	default InetSocketAddress getLocalAddress() {
+		return null;
+	}
 
-                                } catch (IOException e) {
-                                    e.printStackTrace();
-                                }
-                                return exchange;
-                            }).flatMap(chain::filter);
-                        }
+	/**
+	 * Return the remote address where this request is connected to, if available.
+	 */
+	@Nullable
+	default InetSocketAddress getRemoteAddress() {
+		return null;
+	}
 
-                        return chain.filter(exchange); // Proceed if no metadata part
-                    });
-        }
+	/**
+	 * Return the SSL session information if the request has been transmitted
+	 * over a secure protocol including SSL certificates, if available.
+	 * @return the session information, or {@code null} if none available
+	 * @since 5.0.2
+	 */
+	@Nullable
+	default SslInfo getSslInfo() {
+		return null;
+	}
 
-        // Proceed as usual if the request is not multipart
-        return chain.filter(exchange);
-    }
+	/**
+	 * Return a builder to mutate properties of this request by wrapping it
+	 * with {@link ServerHttpRequestDecorator} and returning either mutated
+	 * values or delegating back to this instance.
+	 */
+	default ServerHttpRequest.Builder mutate() {
+		return new DefaultServerHttpRequestBuilder(this);
+	}
 
-    // Helper method to parse metadata
-    private Map<String, Object> parseMetadata(String metadataJson) throws IOException {
-        // Add JSON parsing logic (e.g., Jackson or Gson)
-        ObjectMapper objectMapper = new ObjectMapper();
-        JsonNode jsonNode = objectMapper.readTree(metadataJson);
-        return objectMapper.convertValue(jsonNode, Map.class);
-    }
-}
 
-@Configuration
-public class GatewayRoutesConfig {
+	/**
+	 * Builder for mutating an existing {@link ServerHttpRequest}.
+	 */
+	interface Builder {
 
-    @Value("${services.on-prem-url}")
-    private String onPremUrl;
+		/**
+		 * Set the HTTP method to return.
+		 */
+		Builder method(HttpMethod httpMethod);
 
-    @Value("${services.cloud-url}")
-    private String cloudUrl;
+		/**
+		 * Set the URI to use with the following conditions:
+		 * <ul>
+		 * <li>If {@link #path(String) path} is also set, it overrides the path
+		 * of the URI provided here.
+		 * <li>If {@link #contextPath(String) contextPath} is also set, or
+		 * already present, it must match the start of the path of the URI
+		 * provided here.
+		 * </ul>
+		 */
+		Builder uri(URI uri);
 
-    @Value("${metadata.property.match}")
-    private String metadataPropertyToMatch;
+		/**
+		 * Set the path to use instead of the {@code "rawPath"} of the URI of
+		 * the request with the following conditions:
+		 * <ul>
+		 * <li>If {@link #uri(URI) uri} is also set, the path given here
+		 * overrides the path of the given URI.
+		 * <li>If {@link #contextPath(String) contextPath} is also set, or
+		 * already present, it must match the start of the path given here.
+		 * <li>The given value must begin with a slash.
+		 * </ul>
+		 */
+		Builder path(String path);
 
-    @Bean
-    public RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
-        return builder.routes()
-                .route("route-put-post-delete-dynamic",
-                        r -> r.path("/tdk/cms/rest/**")
-                                .and()
-                                .method(HttpMethod.PUT)
-                                .filters(f -> f.filter(new MetadataRoutingFilter(onPremUrl, cloudUrl, metadataPropertyToMatch)))
-                                .uri("http://dummy")) // dummy uri just to match the route
-                .build();
-    }
+		/**
+		 * Set the contextPath to use.
+		 * <p>The given value must be a valid {@link RequestPath#contextPath()
+		 * contextPath} and it must match the start of the path of the URI of
+		 * the request. That means changing the contextPath, implies also
+		 * changing the path via {@link #path(String)}.
+		 */
+		Builder contextPath(String contextPath);
+
+		/**
+		 * Set or override the specified header values under the given name.
+		 * <p>If you need to add header values, remove headers, etc., use
+		 * {@link #headers(Consumer)} for greater control.
+		 * @param headerName the header name
+		 * @param headerValues the header values
+		 * @since 5.1.9
+		 * @see #headers(Consumer)
+		 */
+		Builder header(String headerName, String... headerValues);
+
+		/**
+		 * Manipulate request headers. The provided {@code HttpHeaders} contains
+		 * current request headers, so that the {@code Consumer} can
+		 * {@linkplain HttpHeaders#set(String, String) overwrite} or
+		 * {@linkplain HttpHeaders#remove(Object) remove} existing values, or
+		 * use any other {@link HttpHeaders} methods.
+		 * @see #header(String, String...)
+		 */
+		Builder headers(Consumer<HttpHeaders> headersConsumer);
+
+		/**
+		 * Set the SSL session information. This may be useful in environments
+		 * where TLS termination is done at the router, but SSL information is
+		 * made available in some other way such as through a header.
+		 * @since 5.0.7
+		 */
+		Builder sslInfo(SslInfo sslInfo);
+
+		/**
+		 * Set the address of the remote client.
+		 * @since 5.3
+		 */
+		Builder remoteAddress(InetSocketAddress remoteAddress);
+
+		/**
+		 * Build a {@link ServerHttpRequest} decorator with the mutated properties.
+		 */
+		ServerHttpRequest build();
+	}
+
 }
