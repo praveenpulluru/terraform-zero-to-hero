@@ -44,6 +44,52 @@ public class GatewayRoutesConfig {
 
 }
 
+@Configuration
+public class GatewayRoutesConfig {
+
+	@Value("${services.on-prem-url}")
+	private String onPremUrl;
+
+	@Value("${services.cloud-url}")
+	private String cloudUrl;
+
+	private static final String on_prem = "on-prem";
+	private static final String cloud = "cloud";
+
+	@Bean
+	RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
+		return builder.routes().route("route-all-GET-to-agg-service",
+				r -> r.path("/tdk/cms/rest/**")
+				.and()
+				.method(HttpMethod.GET)
+				.filters(f -> f.filter(new CustomAggregationFilter(WebClient.builder(), onPremUrl, cloudUrl, on_prem, cloud)))
+				.uri("http://dummy"))
+				
+				// Route MARK - POST, PUT, DELETE to Cloud
+				.route("route-save-as-mark-to-cloud",
+				r -> r.path("/tdk/cms/rest/case/*/*/*/set-as-mark").and()
+				.method(HttpMethod.POST)
+				.filters(f -> f.rewritePath("/tdk/cms/rest/case/(?<sn>\\d{8})\\/(?<doctype>[^/]+)\\/(?<filename>[^/]+)\\/set-as-mark","/cases/${sn}/${doctype}/${filename}/set-as-mark"))
+				.uri(cloudUrl))
+				
+				// Route MARK - POST, PUT, DELETE to Cloud
+				.route("route-put-post-delete-to-cloud",
+				r -> r.path("/tdk/cms/rest/case/*/mark/**").and()
+				.method(HttpMethod.POST, HttpMethod.PUT)
+				.filters(f -> f.rewritePath("/tdk/cms/rest/case/(?<sn>\\d{8})\\/(?<doctype>[^/]+)\\/(?<filename>[^/]+)$","/cases/${sn}/MRK/${filename}"))
+				.uri(cloudUrl))
+				
+				// Route POST, PUT, DELETE to Cloud
+				.route("route-put-post-delete-to-cloud",
+				r -> r.path("/tdk/cms/rest/**").and()
+				.method(HttpMethod.POST, HttpMethod.PUT, HttpMethod.DELETE)
+				.filters(f -> f.rewritePath("/tdk/cms/rest/case/(?<sn>[^/]+)(?<remaining>/.*)?","/cases/${sn}${remaining}"))
+				.uri(cloudUrl))
+				.build();
+	}
+
+}
+
 
 
 public class CustomAggregationFilter implements GatewayFilter {
