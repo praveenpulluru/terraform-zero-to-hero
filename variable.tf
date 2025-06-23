@@ -1,68 +1,90 @@
-import org.springframework.cloud.gateway.filter.GatewayFilter;
-import org.springframework.cloud.gateway.filter.GatewayFilterChain;
-import org.springframework.core.Ordered;
-import org.springframework.http.server.reactive.ServerHttpRequest;
+package gov.uspto.tmcms.gateway.matcher;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.type.TypeReference;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Predicate;
 
 @Component
-public class RewritePathFilter implements GatewayFilter, Ordered {
+public class MetadataMatcher {
 
-    private static final Pattern PATH_PATTERN =
-            Pattern.compile("/trademark/cms/rest/case/(?<sn>\\d{8})/(?<doctype>[^/]+)/(?<filename>[^/]+)");
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
-    @Override
-    public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
-        String path = exchange.getRequest().getURI().getPath();
+    /**
+     * Match metadata value using a custom predicate function.
+     * Note: this method returns a Mono<Boolean> because reading the body is async.
+     *
+     * @param exchange       the current server exchange
+     * @param property       the metadata property key
+     * @param valuePredicate the predicate to evaluate the property's value
+     * @return Mono<Boolean> if the metadata matches
+     */
+    public Mono<Boolean> matchWithPredicate(ServerWebExchange exchange, String property, Predicate<Object> valuePredicate) {
+        return extractMetadataFromRequest(exchange)
+            .map(metadata -> {
+                if (metadata.containsKey(property)) {
+                    return valuePredicate.test(metadata.get(property));
+                }
+                return false;
+            })
+            .onErrorReturn(false); // Return false in case of parsing error
+    }
 
-        Matcher matcher = PATH_PATTERN.matcher(path);
-        if (matcher.matches()) {
-            String sn = matcher.group("sn");
-            String filename = matcher.group("filename");
-            String newPath = "/cases/" + sn + "/MRK/" + filename;
-
-            // Rebuild the request with the new path
-            ServerHttpRequest newRequest = exchange.getRequest().mutate()
-                    .path(newPath)
-                    .build();
-
-            return chain.filter(exchange.mutate().request(newRequest).build());
+    /**
+     * Extracts metadata from JSON request body.
+     * Assumes JSON object in the format:
+     * {
+     *   "documentName": "MRK_00.jpg",
+     *   "documentAlias": "mark",
+     *   "createdByUserId": "eFile",
+     *   "accessLevel": "public",
+     *   "documentType": "mark",
+     *   "docCode": "MRK"
+     * }
+     *
+     * @param exchange the current exchange
+     * @return Mono<Map<String, Object>> containing the parsed metadata
+     */
+    private Mono<Map<String, Object>> extractMetadataFromRequest(ServerWebExchange exchange) {
+        if (!MediaType.APPLICATION_JSON.isCompatibleWith(exchange.getRequest().getHeaders().getContentType())) {
+            return Mono.just(Map.of()); // Not JSON; return empty metadata
         }
 
-        return chain.filter(exchange);
-    }
-
-    @Override
-    public int getOrder() {
-        return -1; // Runs before most filters
+        return exchange.getRequest().getBody()
+            .reduce(new StringBuilder(), (builder, dataBuffer) -> {
+                byte[] bytes = new byte[dataBuffer.readableByteCount()];
+                dataBuffer.read(bytes);
+                builder.append(new String(bytes, StandardCharsets.UTF_8));
+                return builder;
+            })
+            .map(StringBuilder::toString)
+            .flatMap(body -> {
+                try {
+                    Map<String, Object> metadata = objectMapper.readValue(body, new TypeReference<>() {});
+                    return Mono.just(metadata);
+                } catch (Exception e) {
+                    return Mono.error(new RuntimeException("Failed to parse JSON metadata", e));
+                }
+            });
     }
 }
 
 
 
 
-@Bean
-public RouteLocator customRouteLocator(RouteLocatorBuilder builder, RewritePathFilter rewritePathFilter) {
-    return builder.routes()
-            .route("route-put-post-delete-to-cloud",
-                    r -> r.path("/trademark/cms/rest/case/*/mark/**")
-                            .and()
-                            .method(HttpMethod.POST, HttpMethod.PUT)
-                            .filters(f -> f
-                                    .filter((exchange, chain) -> {
-                                        if (shouldRouteToCloud(exchange)) {
-                                            return chain.filter(exchange.mutate().request(createCloudRequest(exchange)).build());
-                                        }
-                                        return chain.filter(exchange);
-                                    })
-                                    .filter(rewritePathFilter)
-                            )
-                            .uri(cloudUrl)
-            )
-            .build();
-}
-
+.filters(f -> f.filter((exchange, chain) -> 
+    metadataMatcher.matchWithPredicate(exchange, "documentType", val -> val.equals("mark"))
+        .flatMap(match -> {
+            if (match) {
+                return chain.filter(exchange.mutate().request(createCloudRequest(exchange)).build());
+            }
+            return chain.filter(exchange);
+        })
+))
