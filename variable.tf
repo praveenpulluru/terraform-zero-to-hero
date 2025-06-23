@@ -1,237 +1,132 @@
+Ah, I see! You want to create a more flexible and dynamic routing system where you can easily reuse the `MetadataMatcher` for different criteria (e.g., checking a source or document type). The idea is to avoid hardcoding specific properties in each route definition, and instead, allow your routing logic to use metadata matching dynamically.
+
+Let's break this down into a more reusable solution where `MetadataMatcher` can accept different matching conditions for each route.
+
+### Step 1: Update `MetadataMatcher`
+
+We will modify the `MetadataMatcher` class so that it can match metadata based on dynamic key-value pairs. This will allow for more flexible usage (e.g., "source" = "tm-ns", or "documentType" = "officeaction").
+
+```java
+import java.util.Map;
+
+public class MetadataMatcher {
+
+    private String key;
+    private String value;
+
+    // Constructor to match any given key-value pair
+    public MetadataMatcher(String key, String value) {
+        this.key = key;
+        this.value = value;
+    }
+
+    // The match method checks if the metadata contains the key-value pair
+    public boolean match(Map<String, String> metadata) {
+        return metadata.containsKey(key) && metadata.get(key).equals(value);
+    }
+
+    // Static method to match dynamically and return a PredicateSpec for use in the routes
+    public static PredicateSpec createPredicate(Map<String, String> metadata, String key, String value) {
+        return exchange -> {
+            MetadataMatcher matcher = new MetadataMatcher(key, value);
+            return matcher.match(metadata);
+        };
+    }
+}
+```
+
+Here’s how it works:
+
+* The `MetadataMatcher` class now holds a `key` and a `value`, which it checks in the metadata.
+* The `match` method checks if the metadata has a specific key-value pair.
+* The static `createPredicate` method is designed to be used directly in the route configuration to dynamically create matching predicates for routing.
+
+### Step 2: Integrate `MetadataMatcher` with the Route Configuration
+
+Now, we can integrate this `MetadataMatcher` logic directly into your route configuration. You can pass different key-value pairs for different routes dynamically.
+
+Here’s how you can adjust your route definitions:
+
+```java
 @Configuration
 public class GatewayRoutesConfig {
 
-	@Value("${services.on-prem-url}")
-	private String onPremUrl;
+    @Value("${services.on-prem-url}")
+    private String onPremUrl;
 
-	@Value("${services.cloud-url}")
-	private String cloudUrl;
+    @Value("${services.cloud-url}")
+    private String cloudUrl;
 
-	private static final String on_prem = "on-prem";
-	private static final String cloud = "cloud";
+    private static final String on_prem = "on-prem";
+    private static final String cloud = "cloud";
 
-	@Bean
-	RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
-		return builder.routes().route("route-all-GET-to-agg-service",
-				r -> r.path("/tdk/cms/rest/**")
-				.and()
-				.method(HttpMethod.GET)
-				.filters(f -> f.filter(new CustomAggregationFilter(WebClient.builder(), onPremUrl, cloudUrl, on_prem, cloud)))
-				.uri("http://dummy"))
-				
-				// Route MARK - POST, PUT, DELETE to Cloud
-				.route("route-save-as-mark-to-cloud",
-				r -> r.path("/tdk/cms/rest/case/*/*/*/set-as-mark").and()
-				.method(HttpMethod.POST)
-				.filters(f -> f.rewritePath("/tdk/cms/rest/case/(?<sn>\\d{8})\\/(?<doctype>[^/]+)\\/(?<filename>[^/]+)\\/set-as-mark","/cases/${sn}/${doctype}/${filename}/set-as-mark"))
-				.uri(cloudUrl))
-				
-				// Route MARK - POST, PUT, DELETE to Cloud
-				.route("route-put-post-delete-to-cloud",
-				r -> r.path("/tdk/cms/rest/case/*/mark/**").and()
-				.method(HttpMethod.POST, HttpMethod.PUT)
-				.filters(f -> f.rewritePath("/tdk/cms/rest/case/(?<sn>\\d{8})\\/(?<doctype>[^/]+)\\/(?<filename>[^/]+)$","/cases/${sn}/MRK/${filename}"))
-				.uri(cloudUrl))
-				
-				// Route POST, PUT, DELETE to Cloud
-				.route("route-put-post-delete-to-cloud",
-				r -> r.path("/tdk/cms/rest/**").and()
-				.method(HttpMethod.POST, HttpMethod.PUT, HttpMethod.DELETE)
-				.filters(f -> f.rewritePath("/tdk/cms/rest/case/(?<sn>[^/]+)(?<remaining>/.*)?","/cases/${sn}${remaining}"))
-				.uri(cloudUrl))
-				.build();
-	}
+    @Bean
+    RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
 
+        // Route for "source" = "tm-ns"
+        PredicateSpec tmNsPredicate = MetadataMatcher.createPredicate(Map.of("source", "tm-ns"));
+
+        // Route for "documentType" = "officeaction"
+        PredicateSpec officeActionPredicate = MetadataMatcher.createPredicate(Map.of("documentType", "officeaction"));
+
+        return builder.routes()
+                .route("route-all-GET-to-agg-service", r -> r
+                        .path("/tdk/cms/rest/**")
+                        .and()
+                        .method(HttpMethod.GET)
+                        .and(tmNsPredicate) // Apply the dynamic "tm-ns" match here
+                        .filters(f -> f.filter(new CustomAggregationFilter(WebClient.builder(), onPremUrl, cloudUrl, on_prem, cloud)))
+                        .uri("http://dummy"))
+
+                // Route for "documentType" = "officeaction"
+                .route("route-save-as-mark-to-cloud",
+                        r -> r.path("/tdk/cms/rest/case/*/*/*/set-as-mark")
+                                .and()
+                                .method(HttpMethod.POST)
+                                .and(officeActionPredicate) // Apply the dynamic "officeaction" match here
+                                .filters(f -> f.rewritePath("/tdk/cms/rest/case/(?<sn>\\d{8})\\/(?<doctype>[^/]+)\\/(?<filename>[^/]+)\\/set-as-mark", "/cases/${sn}/${doctype}/${filename}/set-as-mark"))
+                                .uri(cloudUrl))
+
+                // Add other routes as needed...
+                .build();
+    }
 }
+```
 
-@Configuration
-public class GatewayRoutesConfig {
+### Step 3: Adjust the Route Configuration Logic
 
-	@Value("${services.on-prem-url}")
-	private String onPremUrl;
+You can now use `MetadataMatcher` with different key-value pairs dynamically. The `PredicateSpec` allows you to compose multiple matching conditions using the `.and()` operator, and you can easily add conditions for different keys (e.g., `source`, `documentType`, etc.).
 
-	@Value("${services.cloud-url}")
-	private String cloudUrl;
+For example:
 
-	private static final String on_prem = "on-prem";
-	private static final String cloud = "cloud";
+* For the first route, we're using a condition where the metadata must have `source="tm-ns"`.
+* For the second route, we're checking if the `documentType="officeaction"`.
 
-	@Bean
-	RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
-		return builder.routes().route("route-all-GET-to-agg-service",
-				r -> r.path("/tdk/cms/rest/**")
-				.and()
-				.method(HttpMethod.GET)
-				.filters(f -> f.filter(new CustomAggregationFilter(WebClient.builder(), onPremUrl, cloudUrl, on_prem, cloud)))
-				.uri("http://dummy"))
-				
-				// Route MARK - POST, PUT, DELETE to Cloud
-				.route("route-save-as-mark-to-cloud",
-				r -> r.path("/tdk/cms/rest/case/*/*/*/set-as-mark").and()
-				.method(HttpMethod.POST)
-				.filters(f -> f.rewritePath("/tdk/cms/rest/case/(?<sn>\\d{8})\\/(?<doctype>[^/]+)\\/(?<filename>[^/]+)\\/set-as-mark","/cases/${sn}/${doctype}/${filename}/set-as-mark"))
-				.uri(cloudUrl))
-				
-				// Route MARK - POST, PUT, DELETE to Cloud
-				.route("route-put-post-delete-to-cloud",
-				r -> r.path("/tdk/cms/rest/case/*/mark/**").and()
-				.method(HttpMethod.POST, HttpMethod.PUT)
-				.filters(f -> f.rewritePath("/tdk/cms/rest/case/(?<sn>\\d{8})\\/(?<doctype>[^/]+)\\/(?<filename>[^/]+)$","/cases/${sn}/MRK/${filename}"))
-				.uri(cloudUrl))
-				
-				// Route POST, PUT, DELETE to Cloud
-				.route("route-put-post-delete-to-cloud",
-				r -> r.path("/tdk/cms/rest/**").and()
-				.method(HttpMethod.POST, HttpMethod.PUT, HttpMethod.DELETE)
-				.filters(f -> f.rewritePath("/tdk/cms/rest/case/(?<sn>[^/]+)(?<remaining>/.*)?","/cases/${sn}${remaining}"))
-				.uri(cloudUrl))
-				.build();
-	}
+The route configuration becomes very modular and reusable.
 
+### Key Concepts Here:
+
+1. **`MetadataMatcher.createPredicate()`**: This static method allows you to create flexible predicates for different key-value pairs in the metadata. You can use this in any route to dynamically check whether the metadata matches the criteria.
+2. **`PredicateSpec`**: This is the powerful Spring Cloud Gateway mechanism that allows for route matching conditions. By passing the `PredicateSpec` returned from `MetadataMatcher.createPredicate()`, you ensure that the route is only triggered if the metadata condition is satisfied.
+
+### Step 4: Extending and Improving
+
+If you want to improve this, you can extend `MetadataMatcher` to support more complex conditions, like matching multiple keys (e.g., both `source="tm-ns"` **and** `documentType="officeaction"`), or even using regular expressions or other complex matching rules.
+
+For example, to match both `source="tm-ns"` **and** `documentType="officeaction"`:
+
+```java
+public static PredicateSpec createPredicate(Map<String, String> metadata, String key1, String value1, String key2, String value2) {
+    return exchange -> {
+        MetadataMatcher matcher1 = new MetadataMatcher(key1, value1);
+        MetadataMatcher matcher2 = new MetadataMatcher(key2, value2);
+        return matcher1.match(metadata) && matcher2.match(metadata);
+    };
 }
+```
 
+This gives you a lot of flexibility in defining dynamic and reusable route conditions based on your metadata structure.
 
+---
 
-public class CustomAggregationFilter implements GatewayFilter {
-
-	private static final Logger logger = LoggerFactory.getLogger(CustomAggregationFilter.class);
-	
-	private final WebClient.Builder webClientBuilder;
-
-	private final String onPremUrl;
-	private final String cloudUrl;
-	private final String onPrem;
-	private final String cloud;
-
-	private final ObjectMapper objectMapper = new ObjectMapper();
-
-	public CustomAggregationFilter(WebClient.Builder webClientBuilder, String onPremUrl, String cloudUrl,
-			String onPremService, String cloudService) {
-		this.webClientBuilder = webClientBuilder;
-		this.onPremUrl = onPremUrl;
-		this.cloudUrl = cloudUrl;
-		this.onPrem = onPremService;
-		this.cloud = cloudService;
-	}
-
-	@Override
-	public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
-
-		String service = exchange.getRequest().getHeaders().getFirst("service");
-
-		if (service == null || service.isEmpty()) {
-			service = exchange.getRequest().getQueryParams().getFirst("service");
-		}
-
-		if (service == null || service.isEmpty()) {
-			return callBothServicesAndAggregate(exchange);
-		}
-
-		exchange.getResponse().setStatusCode(org.springframework.http.HttpStatus.BAD_REQUEST);
-		return exchange.getResponse().setComplete();
-	}
-
-	private WebClient getWebClient(String service) {
-		String baseUrl = "";
-
-		if (onPrem.equalsIgnoreCase(service)) {
-			baseUrl = onPremUrl;
-		} else if (cloud.equalsIgnoreCase(service)) {
-			baseUrl = cloudUrl;
-		}
-
-		return webClientBuilder.baseUrl(baseUrl).build();
-	}
-
-	private Mono<Void> callBothServicesAndAggregate(ServerWebExchange exchange) {
-	    Mono<String> onPremResponse = getWebClient(onPrem).get()
-	        .uri(uriBuilder -> uriBuilder.path(exchange.getRequest().getURI().getPath()).build())
-	        .retrieve()
-	        .bodyToMono(String.class)
-	        .onErrorResume(e -> {
-	        	logger.error("Error while calling on-prem service: ",e);
-	            return Mono.just("[]"); 
-	        });
-
-	    String path = exchange.getRequest().getPath().toString();
-	    String[] pathParts = path.split("/");
-	    String caseId = pathParts.length > 5 ? pathParts[5] : "";
-	    String uri = "/cases/" + caseId + "/documents/metadata";
-
-	    Mono<String> cloudResponse = getWebClient(cloud).get().uri(uri).retrieve()
-	        .bodyToMono(String.class)
-	        .onErrorResume(e -> {
-	        	logger.error("Error while calling cloud service: ",e);
-	            return Mono.just("[]"); 
-	        });
-
-	    return Mono.zip(onPremResponse, cloudResponse).flatMap(responses -> {
-	        String onPremData = responses.getT1();
-	        String cloudData = responses.getT2();
-
-	        String combinedResponse = mergeResponses(onPremData, cloudData);
-
-	        exchange.getResponse().getHeaders().setContentType(MediaType.APPLICATION_JSON);
-	        return exchange.getResponse()
-	            .writeWith(Mono.just(exchange.getResponse().bufferFactory().wrap(combinedResponse.getBytes())));
-	    });
-	}
-
-	// Aggregate Logic(Preferring cloud versions if both services have the same
-	// document,Including all unique documents from both sources)
-	private String mergeResponses(String onPremData, String cloudData) {
-		try {
-			ArrayNode onPremArray = (ArrayNode) objectMapper.readTree(onPremData);
-			ArrayNode cloudArray = (ArrayNode) objectMapper.readTree(cloudData);
-
-			Map<String, JsonNode> cloudLookup = new HashMap<>();
-			Set<String> matchedKeys = new HashSet<>();
-
-			for (JsonNode cloudDoc : cloudArray) {
-				String key = getMatchKey(cloudDoc);
-				if (key != null) {
-					cloudLookup.put(key, cloudDoc);
-				}
-			}
-
-			ArrayNode finalDocs = objectMapper.createArrayNode();
-
-			for (JsonNode onPremDoc : onPremArray) {
-				String key = getMatchKey(onPremDoc);
-				if (key != null && cloudLookup.containsKey(key)) {
-					finalDocs.add(cloudLookup.get(key));
-					matchedKeys.add(key);
-				} else {
-					finalDocs.add(onPremDoc);
-				}
-			}
-
-			for (Map.Entry<String, JsonNode> entry : cloudLookup.entrySet()) {
-				if (!matchedKeys.contains(entry.getKey())) {
-					finalDocs.add(entry.getValue());
-				}
-			}
-
-			ObjectNode result = objectMapper.createObjectNode();
-			result.set("documents", finalDocs);
-			return objectMapper.writeValueAsString(result);
-
-		} catch (Exception e) {
-			logger.error("Error while merging json : ",e);
-			return "{\"error\": \"Failed to merge responses\"}";
-		}
-	}
-
-	// Matching documents by their name (excluding file extension)
-	private String getMatchKey(JsonNode doc) {
-		JsonNode metadata = doc.path("metadata");
-		if (metadata.isMissingNode())
-			return null;
-
-		String documentName = metadata.path("documentName").asText(null);
-		if (documentName == null || documentName.isEmpty())
-			return null;
-		int dotIndex = documentName.lastIndexOf(".");
-		return (dotIndex > 0) ? documentName.substring(0, dotIndex) : documentName;
-	}
-}
+Does this align more with what you're looking to achieve?
