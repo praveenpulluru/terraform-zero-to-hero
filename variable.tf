@@ -1,3 +1,8 @@
+Multiple markers at this line
+	- Cannot infer type argument(s) for <R> flatMap(Function<? super T,? extends Publisher<? extends R>>)
+	- Line breakpoint:MetadataRoutingFilter [line: 44] - filter(ServerWebExchange, GatewayFilterChain)
+The method join(Publisher<? extends DataBuffer>) in the type DataBufferUtils is not applicable for the arguments (DataBuffer)
+
 Ah, I see! If your request is a **multipart form** with the content being a file and the metadata as a separate part, the approach changes slightly. In this case, you'll need to handle **multipart form data**.
 
 Here’s how we can approach it:
