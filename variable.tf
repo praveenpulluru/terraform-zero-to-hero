@@ -1,57 +1,50 @@
-import org.springframework.web.reactive.function.BodyExtractors;
-import org.springframework.http.codec.multipart.FormFieldPart;
-import org.springframework.http.codec.multipart.FilePart;
+import org.springframework.cloud.gateway.filter.GatewayFilter;
+import org.springframework.cloud.gateway.filter.GatewayFilterChain;
+import org.springframework.http.HttpMethod;
 import org.springframework.web.server.ServerWebExchange;
-
-import java.util.Map;
-import java.util.List;
+import reactor.core.publisher.Mono;
 
 public class MetadataRoutingFilter implements GatewayFilter {
 
-    private final ObjectMapper objectMapper;
+    private final String onPremUrl;
+    private final String cloudUrl;
+    private final String metadataPropertyToMatch;
 
-    public MetadataRoutingFilter(ObjectMapper objectMapper) {
-        this.objectMapper = objectMapper;
+    public MetadataRoutingFilter(String onPremUrl, String cloudUrl, String metadataPropertyToMatch) {
+        this.onPremUrl = onPremUrl;
+        this.cloudUrl = cloudUrl;
+        this.metadataPropertyToMatch = metadataPropertyToMatch;
     }
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
-        return exchange.getRequest()
-                .getBody() // This is the reactive stream of the request body
-                .collectList() // Collect the body into a list of DataBuffer
-                .flatMap(dataBuffers -> {
-                    // Now we have a list of data buffers. We need to join them into a single byte array
-                    DataBuffer combined = dataBuffers.stream()
-                            .reduce(exchange.getResponse().bufferFactory().allocateBuffer(), (accumulated, current) -> {
-                                // Create a new buffer to accumulate the data
-                                DataBuffer newBuffer = accumulated.write(current.asByteBuffer());
-                                return newBuffer;
-                            });
-
-                    // Process the body as a string (assuming it's JSON)
-                    String jsonBody = new String(combined.asByteBuffer().array());
-
-                    // Extract multipart data (metadata + file)
-                    return exchange.getRequest()
-                            .getBody()
-                            .next() // Only extract the first part of the body
-                            .flatMap(data -> {
-                                // Now, extract multipart data (assuming JSON metadata and files)
-                                return exchange.getRequest().getBody()
-                                        .map(body -> body.toString())
-                                        .flatMap(bodyContent -> {
-                                            try {
-                                                // Assuming metadata is in JSON format
-                                                Map<String, Object> metadata = objectMapper.readValue(bodyContent, Map.class);
-
-                                                // Now store it in exchange attributes
-                                                exchange.getAttributes().put("metadata", metadata);
-                                            } catch (Exception e) {
-                                                return Mono.error(new RuntimeException("Failed to parse JSON", e));
-                                            }
-                                            return chain.filter(exchange);
-                                        });
-                            });
+        // Extract the payload from the request (assuming it's JSON and we can extract metadata)
+        return exchange.getRequest().getBody()
+                .reduce((acc, item) -> acc) // Combine chunks into a single buffer
+                .flatMap(buffer -> {
+                    String payload = buffer.toString(StandardCharsets.UTF_8);
+                    // Assuming you are using Jackson or another library to parse the JSON payload
+                    try {
+                        Map<String, Object> metadata = parseMetadata(payload);
+                        if (MetadataMatcher.matchMetadata(metadata, metadataPropertyToMatch)) {
+                            // Route to cloud if matched
+                            exchange.getRequest().mutate().uri(URI.create(cloudUrl)).build();
+                        } else {
+                            // Route to on-prem if not matched
+                            exchange.getRequest().mutate().uri(URI.create(onPremUrl)).build();
+                        }
+                    } catch (Exception e) {
+                        // Handle any parsing errors
+                        e.printStackTrace();
+                    }
+                    return chain.filter(exchange);
                 });
+    }
+
+    // Helper method to parse the metadata from the payload (simplified here)
+    private Map<String, Object> parseMetadata(String payload) throws JsonProcessingException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        JsonNode rootNode = objectMapper.readTree(payload);
+        return objectMapper.convertValue(rootNode.get("metadata"), Map.class);
     }
 }
