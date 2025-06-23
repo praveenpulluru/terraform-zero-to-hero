@@ -1,3 +1,65 @@
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.cloud.gateway.filter.GatewayFilter;
+import org.springframework.cloud.gateway.filter.GatewayFilterChain;
+import org.springframework.web.server.ServerWebExchange;
+import org.springframework.web.reactive.function.BodyExtractors;
+import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.core.io.buffer.DataBuffer;
+import org.springframework.core.io.buffer.DataBufferUtils;
+import reactor.core.publisher.Mono;
+
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
+
+public class MetadataRoutingFilter implements GatewayFilter {
+
+    private final ObjectMapper objectMapper;
+
+    // Constructor-based injection for ObjectMapper (could also use @Autowired)
+    public MetadataRoutingFilter(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
+    }
+
+    @Override
+    public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+        // Read the body as JSON (assuming metadata is in JSON format)
+        return exchange.getRequest().getBody()
+                .collectList()  // Collect the body into a list of data buffers
+                .flatMap(dataBuffers -> {
+                    // Concatenate the list into a single byte array
+                    byte[] body = new byte[0];
+                    for (DataBuffer dataBuffer : dataBuffers) {
+                        byte[] newBody = new byte[body.length + dataBuffer.readableByteCount()];
+                        System.arraycopy(body, 0, newBody, 0, body.length);
+                        dataBuffer.read(newBody, body.length, dataBuffer.readableByteCount());
+                        body = newBody;
+                        DataBufferUtils.release(dataBuffer);  // Release the DataBuffer to avoid memory leaks
+                    }
+
+                    // Assuming the body is JSON, parse it into a Map (or a custom object)
+                    String jsonBody = new String(body, StandardCharsets.UTF_8);
+                    Map<String, Object> metadata = parseJsonToMap(jsonBody);
+
+                    // Store metadata for later use in the exchange's attributes
+                    exchange.getAttributes().put("metadata", metadata);
+
+                    // Continue with the filter chain
+                    return chain.filter(exchange);
+                });
+    }
+
+    // Helper method to parse the JSON string into a Map (or custom object)
+    private Map<String, Object> parseJsonToMap(String json) {
+        try {
+            // Deserialize the JSON into a Map (you could deserialize into a custom object if needed)
+            return objectMapper.readValue(json, Map.class);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to parse JSON", e);
+        }
+    }
+}
+
+
 Got it! If the metadata you're looking for is part of the **request payload** (the body) rather than the headers, then extracting metadata from the request headers isn't going to work. Since you're dealing with a POST/PUT request where the metadata is in the body, you will need to extract that information from the request **payload** instead.
 
 ### Key Steps for Accessing Metadata in Request Body:
