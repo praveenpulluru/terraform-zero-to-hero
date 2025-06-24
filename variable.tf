@@ -2,12 +2,12 @@ package gov.uspto.tmcms.gateway.matcher;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.http.codec.multipart.FormFieldPart;
+import org.springframework.http.codec.multipart.Part;
 import org.springframework.stereotype.Component;
-import org.springframework.web.multipart.MultipartHttpServletRequest;
-import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ServerWebExchange;
+import reactor.core.publisher.Mono;
 
-import java.io.IOException;
 import java.util.Map;
 import java.util.function.Predicate;
 
@@ -16,72 +16,126 @@ public class MetadataMatcher {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public boolean matchWithPredicate(HttpServletRequest request, String property, Predicate<Object> predicate) {
-        Map<String, Object> metadata = extractMetadataFromRequest(request);
-        return metadata.containsKey(property) && predicate.test(metadata.get(property));
+    /**
+     * Match metadata value using a custom predicate function.
+     */
+    public Mono<Boolean> matchWithPredicate(ServerWebExchange exchange, String property, Predicate<Object> valuePredicate) {
+        return extractMetadataFromRequest(exchange)
+            .map(metadata -> metadata.containsKey(property) && valuePredicate.test(metadata.get(property)))
+            .onErrorResume(e -> {
+                // Optional: Log error
+                return Mono.just(false);
+            });
     }
 
-    private Map<String, Object> extractMetadataFromRequest(HttpServletRequest request) {
-        if (!(request instanceof MultipartHttpServletRequest multipartRequest)) {
-            return Map.of();
-        }
-
-        MultipartFile metadataPart = multipartRequest.getFile("metadata");
-        if (metadataPart == null) {
-            return Map.of();
-        }
-
-        try {
-            return objectMapper.readValue(metadataPart.getInputStream(), new TypeReference<>() {});
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to parse metadata JSON", e);
-        }
+    /**
+     * Extracts metadata JSON from a multipart field named "metadata"
+     */
+    private Mono<Map<String, Object>> extractMetadataFromRequest(ServerWebExchange exchange) {
+        return exchange.getMultipartData()
+            .flatMap(parts -> {
+                Part part = parts.getFirst("metadata");
+                if (part instanceof FormFieldPart formFieldPart) {
+                    try {
+                        Map<String, Object> metadata = objectMapper.readValue(
+                                formFieldPart.value(),
+                                new TypeReference<>() {}
+                        );
+                        return Mono.just(metadata);
+                    } catch (Exception e) {
+                        return Mono.error(new RuntimeException("Failed to parse JSON metadata", e));
+                    }
+                }
+                return Mono.just(Map.of()); // fallback
+            });
     }
 }
-package gov.uspto.tmcms.gateway.filter;
+
+
+
+package gov.uspto.tmcms.gateway.config;
 
 import gov.uspto.tmcms.gateway.matcher.MetadataMatcher;
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.stereotype.Component;
-import org.springframework.web.filter.OncePerRequestFilter;
-import org.springframework.web.util.UriComponentsBuilder;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cloud.gateway.route.RouteLocator;
+import org.springframework.cloud.gateway.route.builder.RouteLocatorBuilder;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.web.server.ServerWebExchange;
 
-import java.io.IOException;
+import java.net.URI;
 
-@Component
-public class MetadataRoutingFilter extends OncePerRequestFilter {
+@Configuration
+public class GatewayRoutesConfig {
+
+    @Value("${services.cloud-url}")
+    private String cloudUrl;
 
     private final MetadataMatcher metadataMatcher;
 
-    public MetadataRoutingFilter(MetadataMatcher metadataMatcher) {
+    public GatewayRoutesConfig(MetadataMatcher metadataMatcher) {
         this.metadataMatcher = metadataMatcher;
     }
 
+    @Bean
+    public RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
+        return builder.routes()
+            .route("route-put-mark-documents", r -> r
+                .path("/trademark/cms/rest/case/**")
+                .and()
+                .method("PUT")
+                .filters(f -> f.filter((exchange, chain) ->
+                    metadataMatcher.matchWithPredicate(exchange, "documentType", val -> "mark".equals(val))
+                        .flatMap(match -> {
+                            if (match) {
+                                ServerHttpRequest mutatedRequest = exchange.getRequest().mutate()
+                                        .uri(URI.create(cloudUrl))
+                                        .build();
+                                return chain.filter(exchange.mutate().request(mutatedRequest).build());
+                            }
+                            return chain.filter(exchange);
+                        })
+                ).rewritePath(
+                    "/trademark/cms/rest/case/(?<sn>\\d{8})/(?<doctype>[^/]+)/(?<filename>[^/]+)",
+                    "/cases/${sn}/MRK/${filename}"
+                ))
+                .uri(cloudUrl)
+            )
+            .build();
+    }
+}
+
+
+
+
+
+@Component
+public class RewritePathFilter implements GatewayFilter, Ordered {
+
+    private static final Pattern PATH_PATTERN =
+        Pattern.compile("/trademark/cms/rest/case/(?<sn>\\d{8})/(?<doctype>[^/]+)/(?<filename>[^/]+)");
+
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
-        throws ServletException, IOException {
-
-        String originalPath = request.getRequestURI();
-
-        if ("PUT".equalsIgnoreCase(request.getMethod()) &&
-                originalPath.matches("^/trademark/cms/rest/case/\\d{8}/[^/]+/[^/]+$") &&
-                metadataMatcher.matchWithPredicate(request, "documentType", val -> "mark".equals(val))) {
-
-            // Extract SN and filename
-            String[] parts = originalPath.split("/");
-            String sn = parts[5];
-            String filename = parts[7];
-
+    public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+        String path = exchange.getRequest().getURI().getPath();
+        Matcher matcher = PATH_PATTERN.matcher(path);
+        if (matcher.matches()) {
+            String sn = matcher.group("sn");
+            String filename = matcher.group("filename");
             String newPath = "/cases/" + sn + "/MRK/" + filename;
 
-            // Forward the request to new path
-            request.getRequestDispatcher(newPath).forward(request, response);
-            return;
-        }
+            ServerHttpRequest newRequest = exchange.getRequest().mutate()
+                .path(newPath)
+                .build();
 
-        filterChain.doFilter(request, response);
+            return chain.filter(exchange.mutate().request(newRequest).build());
+        }
+        return chain.filter(exchange);
+    }
+
+    @Override
+    public int getOrder() {
+        return -1;
     }
 }
