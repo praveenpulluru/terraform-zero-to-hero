@@ -1,86 +1,59 @@
-2025-06-24T11:18:14.102-04:00[0;39m [32mDEBUG[0;39m [35m34728[0;39m [2m--- [hybrid-api] [ctor-http-nio-2] [0;39m[36mo.s.c.g.h.RoutePredicateHandlerMapping  [0;39m [2m:[0;39m [3fd6b36f-1] Mapped to org.springframework.cloud.gateway.handler.FilteringWebHandler@7493d937
-[2m2025-06-24T11:18:14.103-04:00[0;39m [32mDEBUG[0;39m [35m34728[0;39m [2m--- [hybrid-api] [ctor-http-nio-2] [0;39m[36mo.s.c.g.handler.FilteringWebHandler     [0;39m [2m:[0;39m Sorted gatewayFilterFactories: [[GatewayFilterAdapter{delegate=org.springframework.cloud.gateway.filter.RemoveCachedBodyFilter@621624b1}, order = -2147483648], [GatewayFilterAdapter{delegate=org.springframework.cloud.gateway.filter.AdaptCachedBodyGlobalFilter@1cde374}, order = -2147482648], [GatewayFilterAdapter{delegate=org.springframework.cloud.gateway.filter.NettyWriteResponseFilter@38de5daf}, order = -1], [GatewayFilterAdapter{delegate=org.springframework.cloud.gateway.filter.ForwardPathFilter@61853c7e}, order = 0], [GatewayFilterAdapter{delegate=org.springframework.cloud.gateway.filter.GatewayMetricsFilter@5980fa73}, order = 0], [gov.uspto.tmcms.gateway.config.GatewayRoutesConfig$$Lambda/0x000001eed848c930@1748a225, order = 0], [GatewayFilterAdapter{delegate=org.springframework.cloud.gateway.filter.RouteToRequestUrlFilter@7523d5a1}, order = 10000], [GatewayFilterAdapter{delegate=org.springframework.cloud.gateway.config.GatewayNoLoadBalancerClientAutoConfiguration$NoLoadBalancerClientFilter@13ca16bf}, order = 10150], [GatewayFilterAdapter{delegate=org.springframework.cloud.gateway.filter.WebsocketRoutingFilter@32e5af53}, order = 2147483646], GatewayFilterAdapter{delegate=gov.uspto.tmcms.gateway.filter.LoggingFilter@661e279d}, [GatewayFilterAdapter{delegate=org.springframework.cloud.gateway.filter.NettyRoutingFilter@beabd6b}, order = 2147483647], [GatewayFilterAdapter{delegate=org.springframework.cloud.gateway.filter.ForwardRoutingFilter@2bfc2f8b}, order = 2147483647]]
-[MetadataMatcher] Match result for key 'documentType' = true (value: mark)
-[2m2025-06-24T11:18:14.192-04:00[0;39m [31mERROR[0;39m [35m34728[0;39m [2m--- [hybrid-api] [ctor-http-nio-2] [0;39m[36ma.w.r.e.AbstractErrorWebExceptionHandler[0;39m [2m:[0;39m [3fd6b36f-1]  500 Server Error for HTTP PUT "/trademark/cms/rest/case/76900900/mark/MRK_00.jpg"
+package gov.uspto.tmcms.gateway.config;
 
-java.lang.IllegalArgumentException: Required attribute 'org.springframework.cloud.gateway.support.ServerWebExchangeUtils.gatewayRequestUrl' is missing
-	at org.springframework.util.Assert.notNull(Assert.java:200) ~[spring-core-6.2.5.jar:6.2.5]
-	Suppressed: reactor.core.publisher.FluxOnAssembly$OnAssemblyException: 
-Error has been observed at the following site(s):
-	*__checkpoint ⇢ org.springframework.cloud.gateway.filter.WeightCalculatorWebFilter [DefaultWebFilterChain]
-	*__checkpoint ⇢ HTTP PUT "/trademark/cms/rest/case/76900900/mark/MRK_00.jpg" [ExceptionHandlingWebHandler]
-Original Stack Trace:
-		at org.springframework.util.Assert.notNull(Assert.java:200) ~[spring-core-6.2.5.jar:6.2.5]
-		at org.springframework.web.server.ServerWebExchange.getRequiredAttribute(ServerWebExchange.java:93) ~[spring-web-6.2.5.jar:6.2.5]
-		at gov.uspto.tmcms.gateway.config.GatewayRoutesConfig.lambda$4(GatewayRoutesConfig.java:64) ~[classes/:na]
-		at reactor.core.publisher.MonoFlatMap$FlatMapMain.onNext(MonoFlatMap.java:132) ~[reactor-core-3.7.4.jar:3.7.4]
-		at reactor.core.publisher.FluxOnErrorResume$ResumeSubscriber.onNext(FluxOnErrorResume.java:79) ~[reactor-core-3.7.4.jar:3.7.4]
-		at reactor.core.publisher.FluxMapFuseable$MapFuseableSubscriber.onNext(FluxMapFuseable.java:129) ~[reactor-core-3.7.4.jar:3.7.4]
-		at reactor.core.publisher.MonoFlatMap$FlatMapMain.onNext(MonoFlatMap.java:158) ~[reactor-core-3.7.4.jar:3.7.4]
-		at reactor.core.publisher.Operators$MonoSubscriber.complete(Operators.java:1865) ~[reactor-core-3.7.4.jar:3.7.4]
-		at reactor.core.publisher.MonoCacheTime$CoordinatorSubscriber.signalCached(MonoCacheTime.java:337) ~[reactor-core-3.7.4.jar:3.7.4]
-		at reactor.core.publisher.MonoCacheTime$CoordinatorSubscriber.onNext(MonoCacheTime.java:354) ~[reactor-core-3.7.4.jar:3.7.4]
-		at reactor.core.publisher.FluxSwitchIfEmpty$SwitchIfEmptySubscriber.onNext(FluxSwitchIfEmpty.java:74) ~[reactor-core-3.7.4.jar:3.7.4]
-		at reactor.core.publisher.FluxPeekFuseable$PeekFuseableSubscriber.onNext(FluxPeekFuseable.java:210) ~[reactor-core-3.7.4.jar:3.7.4]
-		at reactor.core.publisher.FluxMapFuseable$MapFuseableSubscriber.onNext(FluxMapFuseable.java:129) ~[reactor-core-3.7.4.jar:3.7.4]
-		at reactor.core.publisher.FluxPeekFuseable$PeekFuseableSubscriber.onNext(FluxPeekFuseable.java:210) ~[reactor-core-3.7.4.jar:3.7.4]
-		at reactor.core.publisher.Operators$BaseFluxToMonoOperator.completePossiblyEmpty(Operators.java:2097) ~[reactor-core-3.7.4.jar:3.7.4]
-		at reactor.core.publisher.MonoCollect$CollectSubscriber.onComplete(MonoCollect.java:145) ~[reactor-core-3.7.4.jar:3.7.4]
-		at reactor.core.publisher.FluxConcatMapNoPrefetch$FluxConcatMapNoPrefetchSubscriber.onComplete(FluxConcatMapNoPrefetch.java:241) ~[reactor-core-3.7.4.jar:3.7.4]
-		at reactor.core.publisher.FluxWindowPredicate$WindowPredicateMain.checkTerminated(FluxWindowPredicate.java:540) ~[reactor-core-3.7.4.jar:3.7.4]
-		at reactor.core.publisher.FluxWindowPredicate$WindowPredicateMain.drainLoop(FluxWindowPredicate.java:488) ~[reactor-core-3.7.4.jar:3.7.4]
-		at reactor.core.publisher.FluxWindowPredicate$WindowPredicateMain.drain(FluxWindowPredicate.java:432) ~[reactor-core-3.7.4.jar:3.7.4]
-		at reactor.core.publisher.FluxWindowPredicate$WindowPredicateMain.onComplete(FluxWindowPredicate.java:312) ~[reactor-core-3.7.4.jar:3.7.4]
-		at reactor.core.publisher.FluxCreate$BaseSink.complete(FluxCreate.java:465) ~[reactor-core-3.7.4.jar:3.7.4]
-		at reactor.core.publisher.FluxCreate$BufferAsyncSink.drain(FluxCreate.java:871) ~[reactor-core-3.7.4.jar:3.7.4]
-		at reactor.core.publisher.FluxCreate$BufferAsyncSink.complete(FluxCreate.java:819) ~[reactor-core-3.7.4.jar:3.7.4]
-		at reactor.core.publisher.FluxCreate$SerializedFluxSink.drainLoop(FluxCreate.java:249) ~[reactor-core-3.7.4.jar:3.7.4]
-		at reactor.core.publisher.FluxCreate$SerializedFluxSink.drain(FluxCreate.java:215) ~[reactor-core-3.7.4.jar:3.7.4]
-		at reactor.core.publisher.FluxCreate$SerializedFluxSink.complete(FluxCreate.java:206) ~[reactor-core-3.7.4.jar:3.7.4]
-		at org.springframework.http.codec.multipart.MultipartParser.emitComplete(MultipartParser.java:188) ~[spring-web-6.2.5.jar:6.2.5]
-		at org.springframework.http.codec.multipart.MultipartParser$HeadersState.onNext(MultipartParser.java:386) ~[spring-web-6.2.5.jar:6.2.5]
-		at org.springframework.http.codec.multipart.MultipartParser.changeState(MultipartParser.java:152) ~[spring-web-6.2.5.jar:6.2.5]
-		at org.springframework.http.codec.multipart.MultipartParser$BodyState.onNext(MultipartParser.java:566) ~[spring-web-6.2.5.jar:6.2.5]
-		at org.springframework.http.codec.multipart.MultipartParser.changeState(MultipartParser.java:152) ~[spring-web-6.2.5.jar:6.2.5]
-		at org.springframework.http.codec.multipart.MultipartParser$HeadersState.onNext(MultipartParser.java:401) ~[spring-web-6.2.5.jar:6.2.5]
-		at org.springframework.http.codec.multipart.MultipartParser.changeState(MultipartParser.java:152) ~[spring-web-6.2.5.jar:6.2.5]
-		at org.springframework.http.codec.multipart.MultipartParser$BodyState.onNext(MultipartParser.java:566) ~[spring-web-6.2.5.jar:6.2.5]
-		at org.springframework.http.codec.multipart.MultipartParser.hookOnNext(MultipartParser.java:123) ~[spring-web-6.2.5.jar:6.2.5]
-		at org.springframework.http.codec.multipart.MultipartParser.hookOnNext(MultipartParser.java:52) ~[spring-web-6.2.5.jar:6.2.5]
-		at reactor.core.publisher.BaseSubscriber.onNext(BaseSubscriber.java:160) ~[reactor-core-3.7.4.jar:3.7.4]
-		at reactor.core.publisher.FluxMap$MapSubscriber.onNext(FluxMap.java:122) ~[reactor-core-3.7.4.jar:3.7.4]
-		at reactor.core.publisher.FluxPeek$PeekSubscriber.onNext(FluxPeek.java:200) ~[reactor-core-3.7.4.jar:3.7.4]
-		at reactor.core.publisher.FluxMap$MapSubscriber.onNext(FluxMap.java:122) ~[reactor-core-3.7.4.jar:3.7.4]
-		at reactor.netty.channel.FluxReceive.drainReceiver(FluxReceive.java:292) ~[reactor-netty-core-1.2.4.jar:1.2.4]
-		at reactor.netty.channel.FluxReceive.onInboundNext(FluxReceive.java:401) ~[reactor-netty-core-1.2.4.jar:1.2.4]
-		at reactor.netty.channel.ChannelOperations.onInboundNext(ChannelOperations.java:435) ~[reactor-netty-core-1.2.4.jar:1.2.4]
-		at reactor.netty.http.server.HttpServerOperations.onInboundNext(HttpServerOperations.java:793) ~[reactor-netty-http-1.2.4.jar:1.2.4]
-		at reactor.netty.channel.ChannelOperationsHandler.channelRead(ChannelOperationsHandler.java:115) ~[reactor-netty-core-1.2.4.jar:1.2.4]
-		at io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:444) ~[netty-transport-4.1.119.Final.jar:4.1.119.Final]
-		at io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:420) ~[netty-transport-4.1.119.Final.jar:4.1.119.Final]
-		at io.netty.channel.AbstractChannelHandlerContext.fireChannelRead(AbstractChannelHandlerContext.java:412) ~[netty-transport-4.1.119.Final.jar:4.1.119.Final]
-		at reactor.netty.http.server.HttpTrafficHandler.channelRead(HttpTrafficHandler.java:321) ~[reactor-netty-http-1.2.4.jar:1.2.4]
-		at io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:442) ~[netty-transport-4.1.119.Final.jar:4.1.119.Final]
-		at io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:420) ~[netty-transport-4.1.119.Final.jar:4.1.119.Final]
-		at io.netty.channel.AbstractChannelHandlerContext.fireChannelRead(AbstractChannelHandlerContext.java:412) ~[netty-transport-4.1.119.Final.jar:4.1.119.Final]
-		at io.netty.channel.CombinedChannelDuplexHandler$DelegatingChannelHandlerContext.fireChannelRead(CombinedChannelDuplexHandler.java:436) ~[netty-transport-4.1.119.Final.jar:4.1.119.Final]
-		at io.netty.handler.codec.ByteToMessageDecoder.fireChannelRead(ByteToMessageDecoder.java:346) ~[netty-codec-4.1.119.Final.jar:4.1.119.Final]
-		at io.netty.handler.codec.ByteToMessageDecoder.channelRead(ByteToMessageDecoder.java:318) ~[netty-codec-4.1.119.Final.jar:4.1.119.Final]
-		at io.netty.channel.CombinedChannelDuplexHandler.channelRead(CombinedChannelDuplexHandler.java:251) ~[netty-transport-4.1.119.Final.jar:4.1.119.Final]
-		at io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:442) ~[netty-transport-4.1.119.Final.jar:4.1.119.Final]
-		at io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:420) ~[netty-transport-4.1.119.Final.jar:4.1.119.Final]
-		at io.netty.channel.AbstractChannelHandlerContext.fireChannelRead(AbstractChannelHandlerContext.java:412) ~[netty-transport-4.1.119.Final.jar:4.1.119.Final]
-		at io.netty.channel.DefaultChannelPipeline$HeadContext.channelRead(DefaultChannelPipeline.java:1357) ~[netty-transport-4.1.119.Final.jar:4.1.119.Final]
-		at io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:440) ~[netty-transport-4.1.119.Final.jar:4.1.119.Final]
-		at io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:420) ~[netty-transport-4.1.119.Final.jar:4.1.119.Final]
-		at io.netty.channel.DefaultChannelPipeline.fireChannelRead(DefaultChannelPipeline.java:868) ~[netty-transport-4.1.119.Final.jar:4.1.119.Final]
-		at io.netty.channel.nio.AbstractNioByteChannel$NioByteUnsafe.read(AbstractNioByteChannel.java:166) ~[netty-transport-4.1.119.Final.jar:4.1.119.Final]
-		at io.netty.channel.nio.NioEventLoop.processSelectedKey(NioEventLoop.java:796) ~[netty-transport-4.1.119.Final.jar:4.1.119.Final]
-		at io.netty.channel.nio.NioEventLoop.processSelectedKeysOptimized(NioEventLoop.java:732) ~[netty-transport-4.1.119.Final.jar:4.1.119.Final]
-		at io.netty.channel.nio.NioEventLoop.processSelectedKeys(NioEventLoop.java:658) ~[netty-transport-4.1.119.Final.jar:4.1.119.Final]
-		at io.netty.channel.nio.NioEventLoop.run(NioEventLoop.java:562) ~[netty-transport-4.1.119.Final.jar:4.1.119.Final]
-		at io.netty.util.concurrent.SingleThreadEventExecutor$4.run(SingleThreadEventExecutor.java:998) ~[netty-common-4.1.119.Final.jar:4.1.119.Final]
-		at io.netty.util.internal.ThreadExecutorMap$2.run(ThreadExecutorMap.java:74) ~[netty-common-4.1.119.Final.jar:4.1.119.Final]
-		at io.netty.util.concurrent.FastThreadLocalRunnable.run(FastThreadLocalRunnable.java:30) ~[netty-common-4.1.119.Final.jar:4.1.119.Final]
-		at java.base/java.lang.Thread.run(Thread.java:1583) ~[na:na]
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.cloud.gateway.route.RouteLocator;
+import org.springframework.cloud.gateway.route.builder.RouteLocatorBuilder;
+import org.springframework.cloud.gateway.support.ServerWebExchangeUtils;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.http.server.PathContainer;
+import org.springframework.util.AntPathMatcher;
+import org.springframework.web.server.ServerWebExchange;
+import reactor.core.publisher.Mono;
 
+import java.net.URI;
+import java.util.Map;
+
+@Configuration
+public class GatewayRoutesConfig {
+
+    private static final Logger logger = LoggerFactory.getLogger(GatewayRoutesConfig.class);
+
+    private static final String PATH_PATTERN = "/trademark/cms/rest/case/{caseId}/mark/{fileName}";
+
+    @Bean
+    public RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
+        return builder.routes()
+            .route("mark_upload", r -> r
+                .path("/trademark/cms/rest/case/{caseId}/mark/{fileName}")
+                .filters(f -> f.filter((exchange, chain) -> {
+                    // Defer logic to after route resolution
+                    URI uri = exchange.getAttribute(ServerWebExchangeUtils.GATEWAY_REQUEST_URL_ATTR);
+                    if (uri == null) {
+                        logger.error("GATEWAY_REQUEST_URL_ATTR is not available yet");
+                        return chain.filter(exchange);
+                    }
+
+                    String rawPath = uri.getRawPath(); // already encoded
+                    AntPathMatcher matcher = new AntPathMatcher();
+                    Map<String, String> pathVariables = matcher.extractUriTemplateVariables(PATH_PATTERN, rawPath);
+
+                    String caseId = pathVariables.get("caseId");
+                    String fileName = pathVariables.get("fileName");
+
+                    // Do something with caseId or fileName (e.g., set header or log)
+                    logger.info("Extracted caseId: {}, fileName: {}", caseId, fileName);
+
+                    // Example: Add to request headers
+                    exchange.getRequest().mutate()
+                        .header("X-Case-Id", caseId)
+                        .header("X-File-Name", fileName)
+                        .build();
+
+                    return chain.filter(exchange);
+                }, 10100)) // IMPORTANT: Ensure this filter runs AFTER routing
+                .uri("lb://your-target-service")) // Replace with your actual service
+            .build();
+    }
+}
