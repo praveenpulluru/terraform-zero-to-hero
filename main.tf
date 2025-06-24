@@ -1,35 +1,81 @@
-this.bannerForm = this.fb.group({
-  title: ['', [Validators.required]],
-  description: ['', [Validators.required, Validators.maxLength(440)]]
-});
+package com.verizon.vzreserve.dao.entity;
 
+import java.util.Date;
 
-<div class="form-group">
-  <label>Description *</label>
-  <textarea class="form-control" rows="4" formControlName="description"></textarea>
-  <small class="form-text text-muted">
-    {{ bannerForm.get('description').value?.length || 0 }}/440 characters
-  </small>
-</div>
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Temporal;
+import jakarta.persistence.TemporalType;
 
+@Entity
+public class Banner {
 
-<div class="col-md-4">
-  {{ bannerList[0].description }}
-</div>
-showFullDescription: boolean = false;
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Integer id;
 
-toggleDescription() {
-  this.showFullDescription = !this.showFullDescription;
+	private String title;
+	private String description;
+
+	@Temporal(TemporalType.TIMESTAMP)
+	private Date createTime;
+	@Temporal(TemporalType.TIMESTAMP)
+	private Date updateTime;
+	
+	@PrePersist
+	public void onCreate() {
+		Date date = new Date();
+		this.createTime = date;
+		this.updateTime = date;
+	}
+	
+	@PreUpdate
+	public void onUpdate() {
+		this.updateTime = new Date();
+	}
+
+	public Integer getId() {
+		return id;
+	}
+
+	public void setId(Integer id) {
+		this.id = id;
+	}
+
+	public String getTitle() {
+		return title;
+	}
+
+	public void setTitle(String title) {
+		this.title = title;
+	}
+
+	public String getDescription() {
+		return description;
+	}
+
+	public void setDescription(String description) {
+		this.description = description;
+	}
+
+	public Date getCreateTime() {
+		return createTime;
+	}
+
+	public void setCreateTime(Date createTime) {
+		this.createTime = createTime;
+	}
+
+	public Date getUpdateTime() {
+		return updateTime;
+	}
+
+	public void setUpdateTime(Date updateTime) {
+		this.updateTime = updateTime;
+	}
+
 }
-<div class="col-md-4">
-  <ng-container *ngIf="bannerList[0]?.description?.length <= 100 || showFullDescription">
-    {{ bannerList[0].description }}
-  </ng-container>
-  <ng-container *ngIf="bannerList[0]?.description?.length > 100 && !showFullDescription">
-    {{ bannerList[0].description | slice:0:100 }}...
-    <a href="#" (click)="toggleDescription(); $event.preventDefault()">More</a>
-  </ng-container>
-  <ng-container *ngIf="showFullDescription && bannerList[0]?.description?.length > 100">
-    <a href="#" (click)="toggleDescription(); $event.preventDefault()">Less</a>
-  </ng-container>
-</div>
