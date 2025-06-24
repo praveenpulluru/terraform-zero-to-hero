@@ -1,21 +1,28 @@
-2025-06-24T13:54:36.637-04:00[0;39m [32mDEBUG[0;39m [35m25380[0;39m [2m--- [hybrid-api] [ctor-http-nio-2] [0;39m[36mo.s.c.g.h.RoutePredicateHandlerMapping  [0;39m [2m:[0;39m Route matched: route-put-mark-documents
-[2m2025-06-24T13:54:36.638-04:00[0;39m [32mDEBUG[0;39m [35m25380[0;39m [2m--- [hybrid-api] [ctor-http-nio-2] [0;39m[36mo.s.c.g.h.RoutePredicateHandlerMapping  [0;39m [2m:[0;39m Mapping [Exchange: PUT http://localhost:8081/trademark/cms/rest/case/76900900/mark/MRK_00.jpg] to Route{id='route-put-mark-documents', uri=https://test.app.com:443, order=0, predicate=(Paths: [/trademark/cms/rest/case/**], match trailing slash: true && Methods: [PUT]), gatewayFilters=[gov.uspto.tmcms.gateway.filter.RewritePathFilter@1f47579d, [gov.uspto.tmcms.gateway.config.GatewayRoutesConfig$$Lambda/0x000001c6534ac280@5a879f, order = 0]], metadata={}}
-[2m2025-06-24T13:54:36.638-04:00[0;39m [32mDEBUG[0;39m [35m25380[0;39m [2m--- [hybrid-api] [ctor-http-nio-2] [0;39m[36mo.s.c.g.h.RoutePredicateHandlerMapping  [0;39m [2m:[0;39m [3dced863-1] Mapped to org.springframework.cloud.gateway.handler.FilteringWebHandler@451816fd
-[2m2025-06-24T13:54:36.638-04:00[0;39m [32mDEBUG[0;39m [35m25380[0;39m [2m--- [hybrid-api] [ctor-http-nio-2] [0;39m[36mo.s.c.g.handler.FilteringWebHandler     [0;39m [2m:[0;39m Sorted gatewayFilterFactories: [[GatewayFilterAdapter{delegate=org.springframework.cloud.gateway.filter.RemoveCachedBodyFilter@621624b1}, order = -2147483648], [GatewayFilterAdapter{delegate=org.springframework.cloud.gateway.filter.AdaptCachedBodyGlobalFilter@5a47730c}, order = -2147482648], [GatewayFilterAdapter{delegate=org.springframework.cloud.gateway.filter.NettyWriteResponseFilter@38de5daf}, order = -1], gov.uspto.tmcms.gateway.filter.RewritePathFilter@1f47579d, [GatewayFilterAdapter{delegate=org.springframework.cloud.gateway.filter.ForwardPathFilter@61853c7e}, order = 0], [GatewayFilterAdapter{delegate=org.springframework.cloud.gateway.filter.GatewayMetricsFilter@5980fa73}, order = 0], [gov.uspto.tmcms.gateway.config.GatewayRoutesConfig$$Lambda/0x000001c6534ac280@5a879f, order = 0], [GatewayFilterAdapter{delegate=org.springframework.cloud.gateway.filter.RouteToRequestUrlFilter@7523d5a1}, order = 10000], [GatewayFilterAdapter{delegate=org.springframework.cloud.gateway.config.GatewayNoLoadBalancerClientAutoConfiguration$NoLoadBalancerClientFilter@13ca16bf}, order = 10150], [GatewayFilterAdapter{delegate=org.springframework.cloud.gateway.filter.WebsocketRoutingFilter@32e5af53}, order = 2147483646], GatewayFilterAdapter{delegate=gov.uspto.tmcms.gateway.filter.LoggingFilter@661e279d}, [GatewayFilterAdapter{delegate=org.springframework.cloud.gateway.filter.NettyRoutingFilter@beabd6b}, order = 2147483647], [GatewayFilterAdapter{delegate=org.springframework.cloud.gateway.filter.ForwardRoutingFilter@2bfc2f8b}, order = 2147483647]]
-[2m2025-06-24T13:54:36.708-04:00[0;39m [32m INFO[0;39m [35m25380[0;39m [2m--- [hybrid-api] [ctor-http-nio-2] [0;39m[36mg.u.tmcms.gateway.filter.LoggingFilter  [0;39m [2m:[0;39m Incoming request Unknown is routed to id: route-put-mark-documents, uri: https://test.app.com:443/cases/76900900/mark/MRK_00.jpg
-[2m2025-06-24T13:54:36.713-04:00[0;39m [32mDEBUG[0;39m [35m25380[0;39m [2m--- [hybrid-api] [ctor-http-nio-2] [0;39m[36mg.f.h.o.ObservedRequestHttpHeadersFilter[0;39m [2m:[0;39m Will instrument the HTTP request headers [Accept:"application/json, text/plain, */*", Content-Type:"multipart/form-data; boundary=--------------------------894484736987449772879771", User-Agent:"bruno-runtime/2.1.0", Authorization:"Basic Y21zVG1uZ1NJVDE6Q0BuIUBTIVQyIzIj", request-start-time:"1750787676516", Content-Length:"147335", Accept-Encoding:"gzip, compress, deflate, br", Host:"localhost:8081", Forwarded:"proto=https;host="localhost:8081";for="[0:0:0:0:0:0:0:1]:59600"", X-Forwarded-For:"0:0:0:0:0:0:0:1", X-Forwarded-Proto:"https", X-Forwarded-Port:"443", X-Forwarded-Host:"test.app.com"]
-[2m2025-06-24T13:54:36.719-04:00[0;39m [32mDEBUG[0;39m [35m25380[0;39m [2m--- [hybrid-api] [ctor-http-nio-2] [0;39m[36mg.f.h.o.ObservedRequestHttpHeadersFilter[0;39m [2m:[0;39m Client observation  {name=http.client.requests(null), error=null, context=name='http.client.requests', contextualName='null', error='null', lowCardinalityKeyValues=[http.method='PUT', http.status_code='UNKNOWN', spring.cloud.gateway.route.id='route-put-mark-documents', spring.cloud.gateway.route.uri='https://test.app.com:443'], highCardinalityKeyValues=[http.uri='https://test.app.com/cases/76900900/mark/MRK_00.jpg'], map=[class io.micrometer.core.instrument.LongTaskTimer$Sample='SampleImpl{duration(seconds)=7.62E-4, duration(nanos)=762000.0, startTimeNanos=21156845913200}', class io.micrometer.core.instrument.Timer$Sample='io.micrometer.core.instrument.Timer$Sample@3db264b3'], parentObservation={name=http.server.requests(null), error=null, context=name='http.server.requests', contextualName='null', error='null', lowCardinalityKeyValues=[exception='none', method='PUT', outcome='SUCCESS', status='200', uri='UNKNOWN'], highCardinalityKeyValues=[http.url='/trademark/cms/rest/case/76900900/mark/MRK_00.jpg'], map=[class io.micrometer.core.instrument.LongTaskTimer$Sample='SampleImpl{duration(seconds)=0.093865, duration(nanos)=9.3865E7, startTimeNanos=21156752952400}', class io.micrometer.core.instrument.Timer$Sample='io.micrometer.core.instrument.Timer$Sample@20d916e7'], parentObservation=null}} created for the request. New headers are [Accept:"application/json, text/plain, */*", Content-Type:"multipart/form-data; boundary=--------------------------894484736987449772879771", User-Agent:"bruno-runtime/2.1.0", Authorization:"Basic Y21zVG1uZ1NJVDE6Q0BuIUBTIVQyIzIj", request-start-time:"1750787676516", Content-Length:"147335", Accept-Encoding:"gzip, compress, deflate, br", Host:"localhost:8081", Forwarded:"proto=https;host="localhost:8081";for="[0:0:0:0:0:0:0:1]:59600"", X-Forwarded-For:"0:0:0:0:0:0:0:1", X-Forwarded-Proto:"https", X-Forwarded-Port:"443", X-Forwarded-Host:"test.app.com"]
-[2m2025-06-24T13:54:39.471-04:00[0;39m [32mDEBUG[0;39m [35m25380[0;39m [2m--- [hybrid-api] [ctor-http-nio-2] [0;39m[36mr.netty.http.client.HttpClientConnect   [0;39m [2m:[0;39m [5a83665f-1, L:/10.192.179.37:59607 - R:test.app.com/10.200.11.82:443] Handler is being applied: {uri=https://test.app.com/cases/76900900/mark/MRK_00.jpg, method=PUT}
-[2m2025-06-24T13:55:39.495-04:00[0;39m [33m WARN[0;39m [35m25380[0;39m [2m--- [hybrid-api] [ctor-http-nio-2] [0;39m[36mr.netty.http.client.HttpClientConnect   [0;39m [2m:[0;39m [5a83665f-1, L:/10.192.179.37:59607 ! R:test.app.com/10.200.11.82:443] The connection observed an error
+.route("route-post-metadata-based-routing", r -> r
+    .path("/trademark/cms/rest/case/**")
+    .and()
+    .method(HttpMethod.POST)
+    .filters(f -> f
+        .filter(rewritePathFilter)
+        .filter((exchange, chain) ->
+            metadataMatcher.matchWithPredicate(exchange, "documentType", val -> "mark".equals(val))
+                .flatMap(match -> {
+                    URI targetBaseUri = match ? URI.create(cloudUrl) : URI.create(onPremUrl);
+                    URI currentUri = exchange.getRequest().getURI();
 
-reactor.netty.http.client.PrematureCloseException: Connection prematurely closed BEFORE response
+                    URI finalUri = UriComponentsBuilder.fromUri(targetBaseUri)
+                        .path(currentUri.getPath()) // use rewritten path
+                        .query(currentUri.getQuery())
+                        .build(true)
+                        .toUri();
 
-[2m2025-06-24T13:55:39.503-04:00[0;39m [32mDEBUG[0;39m [35m25380[0;39m [2m--- [hybrid-api] [ctor-http-nio-2] [0;39m[36m.o.ObservationClosingWebExceptionHandler[0;39m [2m:[0;39m An exception occurred and observation was not previously stopped, will stop it. The exception was [reactor.netty.http.client.PrematureCloseException: Connection prematurely closed BEFORE response]
-[2m2025-06-24T13:55:39.518-04:00[0;39m [31mERROR[0;39m [35m25380[0;39m [2m--- [hybrid-api] [ctor-http-nio-2] [0;39m[36ma.w.r.e.AbstractErrorWebExceptionHandler[0;39m [2m:[0;39m [3dced863-1]  500 Server Error for HTTP PUT "/trademark/cms/rest/case/76900900/mark/MRK_00.jpg"
+                    ServerHttpRequest mutatedRequest = exchange.getRequest().mutate()
+                        .uri(finalUri)
+                        .build();
 
-reactor.netty.http.client.PrematureCloseException: Connection prematurely closed BEFORE response
-	Suppressed: reactor.core.publisher.FluxOnAssembly$OnAssemblyException: 
-Error has been observed at the following site(s):
-	*__checkpoint ⇢ org.springframework.cloud.gateway.filter.WeightCalculatorWebFilter [DefaultWebFilterChain]
-	*__checkpoint ⇢ HTTP PUT "/trademark/cms/rest/case/76900900/mark/MRK_00.jpg" [ExceptionHandlingWebHandler]
-Original Stack Trace:
+                    return chain.filter(exchange.mutate().request(mutatedRequest).build());
+                })
+        )
+    )
+    .uri("http://dummy.com") // dummy to satisfy builder; overridden later
+)
