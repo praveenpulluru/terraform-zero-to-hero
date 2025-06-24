@@ -1,1 +1,19 @@
-[2m2025-06-24T14:06:39.494-04:00[0;39m [32mTRACE[0;39m [35m26268[0;39m [2m--- [hybrid-api] [ctor-http-nio-2] [0;39m[36mo.s.c.g.h.RoutePredicateHandlerMapping  [0;39m [2m:[0;39m No RouteDefinition found for [Exchange: PUT http://localhost:8081/trademark/cms/rest/case/76900900/mark/MRK_00.jpg]
+.filter((exchange, chain) ->
+	        			            metadataMatcher.matchWithPredicate(exchange, "documentType", val -> "mark".equals(val))
+	        			                .flatMap(match -> {
+	        			                    URI targetBaseUri = match ? URI.create(cloudUrl) : URI.create(onPremUrl);
+	        			                    URI currentUri = exchange.getRequest().getURI();
+
+	        			                    URI finalUri = UriComponentsBuilder.fromUri(targetBaseUri)
+	        			                        .path(currentUri.getPath()) // use rewritten path
+	        			                        .query(currentUri.getQuery())
+	        			                        .build(true)
+	        			                        .toUri();
+
+	        			                    ServerHttpRequest mutatedRequest = exchange.getRequest().mutate()
+	        			                        .uri(finalUri)
+	        			                        .build();
+
+	        			                    return chain.filter(exchange.mutate().request(mutatedRequest).build());
+	        			                })
+	        			        )
